@@ -19,7 +19,8 @@ import { deriveWorkspaceProjection } from "@/lib/hr-workforce/workspace-projecti
 import { DEFAULT_OH } from "@/lib/hr-workforce/default-oh";
 import { computeOhEngine } from "@/lib/hr-workforce/oh-engine";
 import { resolveOhAnnualNumerator } from "@/lib/hr-workforce/oh-numerator";
-import { useHrWorkforceStore, parseHrSnapshotPayload } from "@/stores/use-hr-workforce-store";
+import { useHrWorkforceStore } from "@/stores/use-hr-workforce-store";
+import { parseHrSnapshotPayload } from "@/lib/hr-workforce/snapshot-payload";
 import {
   rankRolesByMonthlyCost,
   rankRolesByOhSurcharge,

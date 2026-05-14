@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseHrSnapshotPayload } from "@/stores/use-hr-workforce-store";
+import { parseHrSnapshotPayload } from "@/lib/hr-workforce/snapshot-payload";
 import { validateHrSnapshotPayloadForRestore } from "./snapshot-restore";
 
 describe("snapshot parse + restore validation (roundtrip)", () => {

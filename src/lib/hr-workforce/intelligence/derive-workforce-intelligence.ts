@@ -8,7 +8,7 @@ import type {
   OhNonWorkforceLine,
 } from "@/types/hr-workforce";
 import type { HrSnapshotRecord } from "@/stores/use-hr-workforce-store";
-import { parseHrSnapshotPayload } from "@/stores/use-hr-workforce-store";
+import { parseHrSnapshotPayload } from "@/lib/hr-workforce/snapshot-payload";
 import { deriveWorkspaceProjection, type HrWorkforceDerived } from "@/lib/hr-workforce/workspace-projection";
 import { buildWorkforceDashboardAggregates } from "@/lib/hr-workforce/aggregates";
 import { effectiveOperationalRoleType } from "@/lib/hr-workforce/role-operational-type";

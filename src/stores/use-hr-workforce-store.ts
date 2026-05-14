@@ -5,121 +5,28 @@ import type {
   HrDepartment,
   HrGlobalSettings,
   HrImportLogEntry,
-  HrSnapshotMeta,
   HrTeam,
   JobRole,
   OhManualSettings,
 } from "@/types/hr-workforce";
-import type { HrSnapshotPayloadV1, HrSnapshotPayloadV2 } from "@/types/hr-workforce";
 import { newHrId } from "@/lib/hr-workforce/id";
 import type { ImportApplyDeltas } from "@/lib/hr-workforce/import-dry-run";
-import { deriveWorkspaceProjection } from "@/lib/hr-workforce/workspace-projection";
 import { DEFAULT_OH } from "@/lib/hr-workforce/default-oh";
 import { migrateRoleOperationalType } from "@/lib/hr-workforce/role-operational-type";
 import { nowIso } from "@/lib/hr-workforce/structure-utils";
 import { seedDemoWorkforceIfEmpty, type DemoWorkforceSeedResult } from "@/lib/hr-workforce/demo-workforce-seed";
 import { getHrWorkforceHybridStateStorage } from "@/lib/hr-workforce/hr-workforce-hybrid-persist-storage";
 import {
-  HR_WORKFORCE_ENGINE_VERSION,
-  HR_WORKFORCE_FORMULA_VERSION,
-} from "@/lib/hr-workforce/workspace-versions";
-import { validateHrSnapshotPayloadForRestore } from "@/lib/hr-workforce/snapshot-restore";
-
-const DEFAULT_HR_SETTINGS: HrGlobalSettings = {
-  workingDaysPerWeek: 5,
-  workingHoursPerDay: 8,
-  weeksPerYear: 52,
-  offDaysPerYear: 10,
-  defaultCurrency: "SAR",
-  useTeamLevel: true,
-};
-
-/** Old saves stored a separate "default utilization" on HR globals; fold into OH manual on read. */
-type LegacyHrGlobal = Partial<HrGlobalSettings> & { defaultUtilizationPct?: number };
-
-function clampUtilPct(n: number): number {
-  return Math.min(100, Math.max(0, n));
-}
-
-/** Merge persisted OH manual; if `utilizationRatePct` absent/invalid, use legacy `defaultUtilizationPct` from HR, else default 80. */
-function migrateOhManualFromPersist(
-  partial: Partial<OhManualSettings> | undefined,
-  legacyHr?: LegacyHrGlobal
-): OhManualSettings {
-  const legacyU =
-    legacyHr && typeof legacyHr.defaultUtilizationPct === "number" && !Number.isNaN(legacyHr.defaultUtilizationPct)
-      ? legacyHr.defaultUtilizationPct
-      : undefined;
-  const merged: OhManualSettings = {
-    ...DEFAULT_OH,
-    ...(partial ?? {}),
-    billableFteSource: partial?.billableFteSource ?? "manual",
-    ohNonWorkforceLines: Array.isArray(partial?.ohNonWorkforceLines)
-      ? partial!.ohNonWorkforceLines!
-      : DEFAULT_OH.ohNonWorkforceLines,
-  };
-  const util =
-    typeof partial?.utilizationRatePct === "number" && !Number.isNaN(partial.utilizationRatePct)
-      ? clampUtilPct(partial.utilizationRatePct)
-      : typeof legacyU === "number"
-        ? clampUtilPct(legacyU)
-        : DEFAULT_OH.utilizationRatePct;
-  return { ...merged, utilizationRatePct: util };
-}
-
-/** Stored workspaces used USD as the product default; migrate to SAR on rehydrate. */
-function migrateStoredDefaultCurrency(code: string | undefined): string {
-  const c = (code ?? "").trim().toUpperCase();
-  if (!c || c.length !== 3 || c === "USD") return "SAR";
-  return c;
-}
-
-function migratedHrGlobalSettings(partial: Partial<HrGlobalSettings> | undefined): HrGlobalSettings {
-  const { defaultUtilizationPct: _legacyDrop, ...rest } = (partial ?? {}) as LegacyHrGlobal;
-  const merged: HrGlobalSettings = { ...DEFAULT_HR_SETTINGS, ...rest };
-  return { ...merged, defaultCurrency: migrateStoredDefaultCurrency(merged.defaultCurrency) };
-}
-
-function migratedRoleCurrency(roleCurrency: string | undefined, orgDefault: string): string {
-  const r = (roleCurrency ?? "").trim().toUpperCase();
-  if (r === "USD") return "SAR";
-  if (!r || r.length !== 3) return migrateStoredDefaultCurrency(orgDefault);
-  return r;
-}
-
-function migratedRoles(roles: JobRole[], orgDefault: string): JobRole[] {
-  const def = migrateStoredDefaultCurrency(orgDefault);
-  return roles.map((r) => ({ ...r, currency: migratedRoleCurrency(r.currency, def) }));
-}
-
-/** Build per–business-unit OH settings from persisted v2 (legacy flat `ohManual` or keyed map). */
-function resolveOhManualMapForUnits(
-  businessUnits: HrBusinessUnit[],
-  sources: {
-    ohManual?: Partial<OhManualSettings> | undefined;
-    ohManualByBusinessUnitId?: Record<string, Partial<OhManualSettings>> | undefined;
-  },
-  legacyHr?: LegacyHrGlobal
-): Record<string, OhManualSettings> {
-  const out: Record<string, OhManualSettings> = {};
-  const legacyFlat =
-    sources.ohManual && typeof sources.ohManual === "object"
-      ? migrateOhManualFromPersist(sources.ohManual, legacyHr)
-      : undefined;
-  const map = sources.ohManualByBusinessUnitId;
-
-  for (const u of businessUnits) {
-    const row = map && typeof map[u.id] === "object" ? map[u.id] : undefined;
-    if (row !== undefined) {
-      out[u.id] = migrateOhManualFromPersist(row, legacyHr);
-    } else if (legacyFlat) {
-      out[u.id] = { ...legacyFlat };
-    } else {
-      out[u.id] = migrateOhManualFromPersist(undefined, legacyHr);
-    }
-  }
-  return out;
-}
+  DEFAULT_HR_SETTINGS,
+  type LegacyHrGlobal,
+  migrateOhManualFromPersist,
+  migratedHrGlobalSettings,
+  migratedRoleCurrency,
+  migratedRoles,
+  resolveOhManualMapForUnits,
+} from "@/lib/hr-workforce/hr-workforce-persist-migrate";
+import type { HrWorkforceState } from "@/stores/hr-workforce/hr-workforce-store-types";
+import { createHrSnapshotSlice } from "@/stores/hr-workforce/slices/hr-snapshot-slice";
 
 function seedOrg(): {
   businessUnits: HrBusinessUnit[];
@@ -148,82 +55,6 @@ function seedOrg(): {
   return { businessUnits: [bu], departments: [dept], teams: [] };
 }
 
-export interface HrSnapshotRecord {
-  meta: HrSnapshotMeta;
-  payloadJson: string;
-}
-
-interface HrWorkforceState {
-  businessUnits: HrBusinessUnit[];
-  departments: HrDepartment[];
-  teams: HrTeam[];
-  roles: JobRole[];
-  hrGlobalSettings: HrGlobalSettings;
-  ohManualByBusinessUnitId: Record<string, OhManualSettings>;
-  importLogs: HrImportLogEntry[];
-  snapshots: HrSnapshotRecord[];
-
-  /** Session-only: last failed snapshot restore message (not persisted). */
-  lastSnapshotRestoreError: string | null;
-  clearSnapshotRestoreError: () => void;
-
-  setHrGlobalSettings: (patch: Partial<HrGlobalSettings>) => void;
-  setOhManualForBusinessUnit: (businessUnitId: string, patch: Partial<OhManualSettings>) => void;
-
-  addBusinessUnit: (p: { name: string; code?: string; description?: string }) => HrBusinessUnit;
-  updateBusinessUnit: (id: string, patch: Partial<HrBusinessUnit>) => void;
-
-  addDepartment: (businessUnitId: string, name: string) => HrDepartment;
-  updateDepartment: (id: string, patch: Partial<HrDepartment>) => void;
-
-  addTeam: (departmentId: string, name: string) => HrTeam;
-  updateTeam: (id: string, patch: Partial<HrTeam>) => void;
-  /** Removes unit and all departments, teams, and roles under it. No-op if this is the only business unit. */
-  deleteBusinessUnit: (id: string) => void;
-  /** Removes department, its teams, and all roles in that department. No-op if this is the only department. */
-  deleteDepartment: (id: string) => void;
-  /** Removes team and clears team assignment on roles that referenced it. */
-  deleteTeam: (id: string) => void;
-
-  upsertRole: (role: JobRole) => void;
-  addRole: (partial: Partial<Omit<JobRole, "id">> & { departmentId: string }) => JobRole;
-  updateRole: (id: string, patch: Partial<JobRole>) => void;
-  duplicateRole: (id: string) => void;
-  archiveRole: (id: string, archived: boolean) => void;
-  /** Permanently removes the role row from the module. */
-  deleteRole: (id: string) => void;
-  bulkPatchRoles: (ids: string[], patch: Partial<JobRole>) => void;
-  bulkDeleteRoles: (ids: string[]) => void;
-
-  applyImportDeltas: (deltas: ImportApplyDeltas) => void;
-  pushImportLog: (entry: Omit<HrImportLogEntry, "id" | "createdAt"> & Partial<Pick<HrImportLogEntry, "id" | "createdAt">>) => void;
-  deleteImportLog: (logId: string) => void;
-  clearAllImportLogs: () => void;
-
-  saveSnapshot: (label: string) => void;
-  restoreSnapshot: (snapshotId: string) => void;
-  deleteSnapshot: (snapshotId: string) => void;
-  compareSnapshots: (aId: string, bId: string) => HrSnapshotCompareResult | null;
-
-  resetModule: () => void;
-  /** Adds illustrative roles, a delivery department + team, and composed OH lines when there are no active roles. */
-  seedDemoWorkforce: () => DemoWorkforceSeedResult;
-}
-
-export interface HrSnapshotCompareResult {
-  aLabel: string;
-  bLabel: string;
-  /** Difference in stored role row counts (includes archived). */
-  rolesDelta: number;
-  departmentsDelta: number;
-  teamsDelta: number;
-  businessUnitsDelta: number;
-  /** Sum of employee counts on non-archived roles (B − A). */
-  headcountDelta: number;
-  /** Operational monthly workforce cost (active chain) from engine: B − A. */
-  monthlyCostDeltaApprox: number | null;
-}
-
 function emptyRoleTemplate(
   deptId: string,
   businessUnitId: string,
@@ -248,102 +79,6 @@ function emptyRoleTemplate(
     includeInOhAllocation: true,
     additionalCosts: [],
     archived: false,
-  };
-}
-
-function snapshotVersionOrDefault(n: unknown, fallback: number): number {
-  return typeof n === "number" && Number.isFinite(n) ? n : fallback;
-}
-
-function migrateV1Payload(
-  p: HrSnapshotPayloadV1
-): Omit<HrSnapshotPayloadV2, "v" | "hrGlobalSettings" | "ohManual" | "ohManualByBusinessUnitId"> {
-  const t = nowIso();
-  const bu: HrBusinessUnit = {
-    id: newHrId("bu"),
-    name: "Imported (legacy)",
-    code: "",
-    description: "Migrated from snapshot v1",
-    isActive: true,
-    createdAt: t,
-    updatedAt: t,
-  };
-  const legacyDepts = p.departments as unknown as (HrDepartment & { archived?: boolean })[];
-  const departments: HrDepartment[] = legacyDepts.map((d) => {
-    const isActive = typeof d.isActive === "boolean" ? d.isActive : !d.archived;
-    const businessUnitId = d.businessUnitId ?? bu.id;
-    return {
-      ...d,
-      businessUnitId,
-      isActive: isActive ?? true,
-      createdAt: d.createdAt ?? t,
-      updatedAt: d.updatedAt ?? t,
-    };
-  });
-  const legacyTeams = p.teams as unknown as (HrTeam & { archived?: boolean })[];
-  const teams: HrTeam[] = legacyTeams.map((tm) => {
-    const isActive = typeof tm.isActive === "boolean" ? tm.isActive : !tm.archived;
-    return {
-      ...tm,
-      isActive: isActive ?? true,
-      createdAt: tm.createdAt ?? t,
-      updatedAt: tm.updatedAt ?? t,
-    };
-  });
-  const roles: JobRole[] = p.roles
-    .map((r) => ({
-      ...r,
-      businessUnitId:
-        r.businessUnitId ||
-        departments.find((d) => d.id === r.departmentId)?.businessUnitId ||
-        bu.id,
-    }))
-    .map(migrateRoleOperationalType);
-  return { businessUnits: [bu], departments, teams, roles };
-}
-
-export function parseHrSnapshotPayload(json: string): HrSnapshotPayloadV2 {
-  const raw = JSON.parse(json) as HrSnapshotPayloadV2 & { v?: number };
-  const engineDefault = 1;
-  const formulaDefault = 1;
-  if (raw && typeof raw === "object" && raw.v === 2) {
-    const hrRaw = raw.hrGlobalSettings as LegacyHrGlobal;
-    const hrGlobalSettings = migratedHrGlobalSettings(hrRaw);
-    const ohManualByBusinessUnitId = resolveOhManualMapForUnits(
-      raw.businessUnits,
-      {
-        ohManual: raw.ohManual,
-        ohManualByBusinessUnitId: raw.ohManualByBusinessUnitId,
-      },
-      hrRaw
-    );
-    return {
-      v: 2,
-      engineVersion: snapshotVersionOrDefault(raw.engineVersion, engineDefault),
-      formulaVersion: snapshotVersionOrDefault(raw.formulaVersion, formulaDefault),
-      businessUnits: raw.businessUnits,
-      departments: raw.departments,
-      teams: raw.teams,
-      roles: raw.roles,
-      hrGlobalSettings,
-      ohManualByBusinessUnitId,
-    };
-  }
-  const legacy = raw as unknown as HrSnapshotPayloadV1;
-  const m = migrateV1Payload(legacy);
-  const hrRaw = legacy.hrGlobalSettings as LegacyHrGlobal;
-  const hrGlobalSettings = migratedHrGlobalSettings(hrRaw);
-  const ohManualByBusinessUnitId = resolveOhManualMapForUnits(m.businessUnits, {
-    ohManual: legacy.ohManual,
-    ohManualByBusinessUnitId: undefined,
-  }, hrRaw);
-  return {
-    v: 2,
-    engineVersion: engineDefault,
-    formulaVersion: formulaDefault,
-    ...m,
-    hrGlobalSettings,
-    ohManualByBusinessUnitId,
   };
 }
 
@@ -436,7 +171,9 @@ const initialOhManualByBusinessUnitId: Record<string, OhManualSettings> = {
 
 export const useHrWorkforceStore = create<HrWorkforceState>()(
   persist(
-    (set, get) => ({
+    (set, get, store) => ({
+      ...createHrSnapshotSlice(set, get, store),
+
       businessUnits: seed.businessUnits,
       departments: seed.departments,
       teams: seed.teams,
@@ -444,10 +181,7 @@ export const useHrWorkforceStore = create<HrWorkforceState>()(
       hrGlobalSettings: { ...DEFAULT_HR_SETTINGS },
       ohManualByBusinessUnitId: { ...initialOhManualByBusinessUnitId },
       importLogs: [],
-      snapshots: [],
-      lastSnapshotRestoreError: null,
 
-      clearSnapshotRestoreError: () => set({ lastSnapshotRestoreError: null }),
       setHrGlobalSettings: (patch) =>
         set({ hrGlobalSettings: { ...get().hrGlobalSettings, ...patch } }),
       setOhManualForBusinessUnit: (businessUnitId, patch) => {
@@ -675,108 +409,6 @@ export const useHrWorkforceStore = create<HrWorkforceState>()(
 
       clearAllImportLogs: () => set({ importLogs: [] }),
 
-      saveSnapshot: (label) => {
-        const s = get();
-        const meta: HrSnapshotMeta = {
-          id: newHrId("snap"),
-          createdAt: new Date().toISOString(),
-          label: label.trim() || "Snapshot",
-          engineVersion: HR_WORKFORCE_ENGINE_VERSION,
-          formulaVersion: HR_WORKFORCE_FORMULA_VERSION,
-        };
-        const payload: HrSnapshotPayloadV2 = {
-          v: 2,
-          engineVersion: HR_WORKFORCE_ENGINE_VERSION,
-          formulaVersion: HR_WORKFORCE_FORMULA_VERSION,
-          businessUnits: s.businessUnits,
-          departments: s.departments,
-          teams: s.teams,
-          roles: s.roles,
-          hrGlobalSettings: s.hrGlobalSettings,
-          ohManualByBusinessUnitId: s.ohManualByBusinessUnitId,
-        };
-        const rec: HrSnapshotRecord = {
-          meta,
-          payloadJson: JSON.stringify(payload),
-        };
-        set({ snapshots: [rec, ...s.snapshots].slice(0, 50) });
-      },
-
-      restoreSnapshot: (snapshotId) => {
-        const s = get();
-        const snap = s.snapshots.find((x) => x.meta.id === snapshotId);
-        if (!snap) {
-          set({ lastSnapshotRestoreError: "Snapshot not found." });
-          return;
-        }
-        let payload: HrSnapshotPayloadV2;
-        try {
-          payload = parseHrSnapshotPayload(snap.payloadJson);
-        } catch {
-          set({ lastSnapshotRestoreError: "Invalid snapshot data (JSON parse failed)." });
-          return;
-        }
-        const check = validateHrSnapshotPayloadForRestore(payload);
-        if (!check.ok) {
-          set({ lastSnapshotRestoreError: check.errors.join(" ") });
-          return;
-        }
-        const roles = migratedRoles(payload.roles, payload.hrGlobalSettings.defaultCurrency).map(migrateRoleOperationalType);
-        set({
-          businessUnits: payload.businessUnits,
-          departments: payload.departments,
-          teams: payload.teams,
-          roles,
-          hrGlobalSettings: payload.hrGlobalSettings,
-          ohManualByBusinessUnitId: payload.ohManualByBusinessUnitId,
-          lastSnapshotRestoreError: null,
-        });
-      },
-
-      deleteSnapshot: (snapshotId) =>
-        set({ snapshots: get().snapshots.filter((x) => x.meta.id !== snapshotId) }),
-
-      compareSnapshots: (aId, bId) => {
-        const s = get();
-        const a = s.snapshots.find((x) => x.meta.id === aId);
-        const b = s.snapshots.find((x) => x.meta.id === bId);
-        if (!a || !b) return null;
-        try {
-          const pa = parseHrSnapshotPayload(a.payloadJson);
-          const pb = parseHrSnapshotPayload(b.payloadJson);
-          const headA = pa.roles.filter((r) => !r.archived).reduce((x, r) => x + r.employeeCount, 0);
-          const headB = pb.roles.filter((r) => !r.archived).reduce((x, r) => x + r.employeeCount, 0);
-          const ma = deriveWorkspaceProjection({
-            roles: pa.roles,
-            businessUnits: pa.businessUnits,
-            departments: pa.departments,
-            teams: pa.teams,
-            hrGlobalSettings: pa.hrGlobalSettings,
-            ohManualByBusinessUnitId: pa.ohManualByBusinessUnitId ?? {},
-          });
-          const mb = deriveWorkspaceProjection({
-            roles: pb.roles,
-            businessUnits: pb.businessUnits,
-            departments: pb.departments,
-            teams: pb.teams,
-            hrGlobalSettings: pb.hrGlobalSettings,
-            ohManualByBusinessUnitId: pb.ohManualByBusinessUnitId ?? {},
-          });
-          return {
-            aLabel: a.meta.label,
-            bLabel: b.meta.label,
-            rolesDelta: pb.roles.length - pa.roles.length,
-            departmentsDelta: pb.departments.length - pa.departments.length,
-            teamsDelta: pb.teams.length - pa.teams.length,
-            businessUnitsDelta: pb.businessUnits.length - pa.businessUnits.length,
-            headcountDelta: headB - headA,
-            monthlyCostDeltaApprox: mb.dashboard.monthlyWorkforceCost - ma.dashboard.monthlyWorkforceCost,
-          };
-        } catch {
-          return null;
-        }
-      },
-
       resetModule: () => {
         const org = seedOrg();
         set({
@@ -864,4 +496,6 @@ export const useHrWorkforceStore = create<HrWorkforceState>()(
 );
 
 export { DEFAULT_OH } from "@/lib/hr-workforce/default-oh";
-export { DEFAULT_HR_SETTINGS };
+export { DEFAULT_HR_SETTINGS } from "@/lib/hr-workforce/hr-workforce-persist-migrate";
+export { parseHrSnapshotPayload } from "@/lib/hr-workforce/snapshot-payload";
+export type { HrSnapshotRecord, HrSnapshotCompareResult } from "@/stores/hr-workforce/hr-workforce-store-types";
