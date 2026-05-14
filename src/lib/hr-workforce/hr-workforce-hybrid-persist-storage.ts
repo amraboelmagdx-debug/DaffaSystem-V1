@@ -1,4 +1,5 @@
 import type { StateStorage } from "zustand/middleware";
+import { isHrWorkforceHybridDiskMirrorEnabledOnClient } from "@/lib/hr-workforce/persist-safety";
 
 const DISK_API = "/api/dev/hr-workforce-disk";
 
@@ -10,6 +11,7 @@ function flushDiskWrite() {
   const body = pendingDiskBody;
   pendingDiskBody = null;
   if (body == null || typeof window === "undefined") return;
+  if (!isHrWorkforceHybridDiskMirrorEnabledOnClient()) return;
   void fetch(DISK_API, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -20,6 +22,7 @@ function flushDiskWrite() {
 }
 
 function scheduleDiskWrite(value: string) {
+  if (!isHrWorkforceHybridDiskMirrorEnabledOnClient()) return;
   pendingDiskBody = value;
   if (diskWriteTimer != null) clearTimeout(diskWriteTimer);
   diskWriteTimer = setTimeout(flushDiskWrite, 450);
@@ -38,6 +41,7 @@ export function getHrWorkforceHybridStateStorage(): StateStorage {
         scheduleDiskWrite(local);
         return local;
       }
+      if (!isHrWorkforceHybridDiskMirrorEnabledOnClient()) return null;
       try {
         const res = await fetch(DISK_API, { cache: "no-store" });
         if (!res.ok) return null;
@@ -62,6 +66,7 @@ export function getHrWorkforceHybridStateStorage(): StateStorage {
         diskWriteTimer = null;
       }
       pendingDiskBody = null;
+      if (!isHrWorkforceHybridDiskMirrorEnabledOnClient()) return;
       void fetch(DISK_API, { method: "DELETE" }).catch(() => {});
     },
   };

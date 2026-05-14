@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
+import { isHrWorkforceDiskApiAllowedOnServer } from "@/lib/hr-workforce/persist-safety";
 
 const REL_PATH = ["data", "hr-workforce-persist.json"] as const;
 
 function diskSyncAllowed(): boolean {
-  return process.env.NODE_ENV === "development" || process.env.HR_WORKFORCE_DISK_SYNC === "1";
+  return isHrWorkforceDiskApiAllowedOnServer();
 }
 
 function filePath(): string {
