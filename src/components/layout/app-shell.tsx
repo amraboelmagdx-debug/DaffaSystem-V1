@@ -8,6 +8,7 @@ import {
   Building2,
   Grid3x3,
   LayoutDashboard,
+  Layers,
   LineChart,
   MessageSquare,
   Moon,
@@ -37,6 +38,7 @@ const nav = [
   { href: "/pipeline", key: "pipeline" as const, icon: Workflow },
   { href: "/sales-plan", key: "salesPlan" as const, icon: Target },
   { href: "/hr-workforce", key: "hrWorkforce" as const, icon: Users2 },
+  { href: "/service-architecture", key: "serviceArchitecture" as const, icon: Layers },
   { href: "/grid", key: "grid" as const, icon: Grid3x3 },
   { href: "/assistant", key: "assistant" as const, icon: MessageSquare },
   { href: "/settings", key: "settings" as const, icon: Settings2 },
@@ -87,6 +89,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     ? pathname.startsWith("/sales-plan")
                     : item.href === "/hr-workforce"
                       ? pathname.startsWith("/hr-workforce")
+                      : item.href === "/service-architecture"
+                        ? pathname.startsWith("/service-architecture")
                       : pathname.startsWith(item.href);
               const Icon = item.icon;
               return (
