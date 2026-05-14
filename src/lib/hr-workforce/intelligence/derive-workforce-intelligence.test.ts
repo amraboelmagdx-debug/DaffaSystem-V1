@@ -9,7 +9,7 @@ import type {
 } from "@/types/hr-workforce";
 import type { HrSnapshotRecord } from "@/stores/use-hr-workforce-store";
 import { newHrId } from "../id";
-import { deriveHrWorkforceModel } from "../selectors";
+import { deriveWorkspaceProjection } from "../workspace-projection";
 import { deriveWorkforceIntelligence } from "./derive-workforce-intelligence";
 
 const hrGlobalSettings: HrGlobalSettings = {
@@ -89,7 +89,7 @@ describe("deriveWorkforceIntelligence", () => {
       },
     };
 
-    const model = deriveHrWorkforceModel({
+    const model = deriveWorkspaceProjection({
       roles,
       businessUnits: [bu],
       departments: [dept],
@@ -154,7 +154,7 @@ describe("deriveWorkforceIntelligence", () => {
         ohNonWorkforceLines: [],
       },
     };
-    const model = deriveHrWorkforceModel({
+    const model = deriveWorkspaceProjection({
       roles,
       businessUnits: [bu],
       departments: [dept],

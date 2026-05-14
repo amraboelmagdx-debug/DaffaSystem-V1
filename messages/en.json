@@ -764,6 +764,8 @@
     "snapshotRestoreDesc": "Replaces the entire in-module structure and roles with the snapshot. Use after saving snapshots you trust.",
     "snapshotCompare": "Compare two snapshots",
     "snapshotRestoreConfirm": "Replace current workforce data with this snapshot?",
+    "snapshotRestoreFailedTitle": "Snapshot restore blocked",
+    "snapshotRestoreDismiss": "Dismiss",
     "intelligence": {
       "pageTitle": "Workforce intelligence",
       "pageSubtitle": "Default is the whole organization. Use the scope control to focus one business unit; KPIs and analytics follow that slice. OH what-if still picks a unit explicitly. Benchmarking always lists every unit for comparison.",

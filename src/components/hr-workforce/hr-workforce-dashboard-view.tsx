@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { InsightBulb } from "@/components/planning/insight-bulb";
-import { deriveHrWorkforceModel } from "@/lib/hr-workforce/selectors";
+import { deriveWorkspaceProjection } from "@/lib/hr-workforce/workspace-projection";
 import { DEFAULT_OH } from "@/lib/hr-workforce/default-oh";
 import { computeOhEngine } from "@/lib/hr-workforce/oh-engine";
 import { resolveOhAnnualNumerator } from "@/lib/hr-workforce/oh-numerator";
@@ -88,7 +88,7 @@ export function HrWorkforceDashboardView() {
 
   const model = useMemo(
     () =>
-      deriveHrWorkforceModel({
+      deriveWorkspaceProjection({
         roles,
         businessUnits,
         departments,
@@ -197,7 +197,7 @@ export function HrWorkforceDashboardView() {
           rows.push({ label: snap.meta.label.slice(0, 12), monthly: 0 });
           continue;
         }
-        const m = deriveHrWorkforceModel({
+        const m = deriveWorkspaceProjection({
           roles: p.roles ?? [],
           businessUnits: snapBus,
           departments: p.departments ?? [],

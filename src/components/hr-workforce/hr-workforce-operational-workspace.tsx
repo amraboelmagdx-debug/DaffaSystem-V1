@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { HrRoleCompensationDialog } from "@/components/hr-workforce/hr-role-compensation-dialog";
 import { InsightBulb } from "@/components/planning/insight-bulb";
-import { deriveHrWorkforceModel } from "@/lib/hr-workforce/selectors";
+import { deriveWorkspaceProjection } from "@/lib/hr-workforce/workspace-projection";
 import {
   effectiveOperationalRoleType,
   patchOperationalRoleType,
@@ -63,7 +63,7 @@ export function HrWorkforceOperationalWorkspace() {
 
   const model = useMemo(
     () =>
-      deriveHrWorkforceModel({
+      deriveWorkspaceProjection({
         roles,
         businessUnits,
         departments,

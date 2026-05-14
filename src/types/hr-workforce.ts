@@ -193,11 +193,23 @@ export interface HrSnapshotMeta {
   id: string;
   createdAt: string;
   label: string;
+  /** App serialization / restore semantics version at capture time. */
+  engineVersion?: number;
+  /** Workforce + OH formula bundle version at capture time. */
+  formulaVersion?: number;
 }
 
 /** Snapshot payload versions (restore handles all). */
 export type HrSnapshotPayloadV2 = {
   v: 2;
+  /**
+   * Serialization / payload shape version (optional on older saves; treated as 1 when absent).
+   */
+  engineVersion?: number;
+  /**
+   * Workforce cost + OH definition version (optional on older saves; treated as 1 when absent).
+   */
+  formulaVersion?: number;
   businessUnits: HrBusinessUnit[];
   departments: HrDepartment[];
   teams: HrTeam[];

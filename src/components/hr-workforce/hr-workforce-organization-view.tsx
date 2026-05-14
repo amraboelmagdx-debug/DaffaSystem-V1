@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { InsightBulb } from "@/components/planning/insight-bulb";
-import { deriveHrWorkforceModel } from "@/lib/hr-workforce/selectors";
+import { deriveWorkspaceProjection } from "@/lib/hr-workforce/workspace-projection";
 import { DEFAULT_OH } from "@/lib/hr-workforce/default-oh";
 import { monthlyWorkingHoursPerEmployee } from "@/lib/hr-workforce/monthly-hours";
 import { effectiveOhBillableHeadcount } from "@/lib/hr-workforce/structure-utils";
@@ -52,6 +52,8 @@ export function HrWorkforceOrganizationView() {
   const setOhForBu = useHrWorkforceStore((s) => s.setOhManualForBusinessUnit);
   const saveSnapshot = useHrWorkforceStore((s) => s.saveSnapshot);
   const restoreSnapshot = useHrWorkforceStore((s) => s.restoreSnapshot);
+  const lastSnapshotRestoreError = useHrWorkforceStore((s) => s.lastSnapshotRestoreError);
+  const clearSnapshotRestoreError = useHrWorkforceStore((s) => s.clearSnapshotRestoreError);
   const deleteSnapshot = useHrWorkforceStore((s) => s.deleteSnapshot);
   const compareSnapshots = useHrWorkforceStore((s) => s.compareSnapshots);
   const resetModule = useHrWorkforceStore((s) => s.resetModule);
@@ -95,7 +97,7 @@ export function HrWorkforceOrganizationView() {
 
   const model = useMemo(
     () =>
-      deriveHrWorkforceModel({
+      deriveWorkspaceProjection({
         roles,
         businessUnits,
         departments,
@@ -873,6 +875,24 @@ export function HrWorkforceOrganizationView() {
               <CardDescription>{t("snapshotRestoreDesc")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
+              {lastSnapshotRestoreError ? (
+                <div
+                  role="alert"
+                  className="relative rounded-md border border-destructive/50 bg-destructive/10 p-3 pr-24 text-sm text-destructive"
+                >
+                  <div className="font-medium">{t("snapshotRestoreFailedTitle")}</div>
+                  <p className="mt-1 break-words opacity-90">{lastSnapshotRestoreError}</p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="absolute right-2 top-2 h-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    onClick={() => clearSnapshotRestoreError()}
+                  >
+                    {t("snapshotRestoreDismiss")}
+                  </Button>
+                </div>
+              ) : null}
               {snapshots.map((s) => (
                 <div key={s.meta.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 py-2 text-sm">
                   <div className="min-w-0 flex-1">

@@ -9,7 +9,7 @@ import type {
 } from "@/types/hr-workforce";
 import type { HrSnapshotRecord } from "@/stores/use-hr-workforce-store";
 import { parseHrSnapshotPayload } from "@/stores/use-hr-workforce-store";
-import { deriveHrWorkforceModel, type HrWorkforceDerived } from "@/lib/hr-workforce/selectors";
+import { deriveWorkspaceProjection, type HrWorkforceDerived } from "@/lib/hr-workforce/workspace-projection";
 import { buildWorkforceDashboardAggregates } from "@/lib/hr-workforce/aggregates";
 import { effectiveOperationalRoleType } from "@/lib/hr-workforce/role-operational-type";
 import { annualAmountNonWorkforceLine } from "@/lib/hr-workforce/oh-numerator";
@@ -85,7 +85,7 @@ function computeExecutiveTrend(
   let prior: number | null = null;
   try {
     const p = parseHrSnapshotPayload(sorted[1]!.payloadJson);
-    const m = deriveHrWorkforceModel({
+    const m = deriveWorkspaceProjection({
       roles: p.roles ?? [],
       businessUnits: p.businessUnits ?? [],
       departments: p.departments ?? [],

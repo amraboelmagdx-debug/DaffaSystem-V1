@@ -13,12 +13,17 @@ import type {
 import type { HrSnapshotPayloadV1, HrSnapshotPayloadV2 } from "@/types/hr-workforce";
 import { newHrId } from "@/lib/hr-workforce/id";
 import type { ImportApplyDeltas } from "@/lib/hr-workforce/import-dry-run";
-import { deriveHrWorkforceModel } from "@/lib/hr-workforce/selectors";
+import { deriveWorkspaceProjection } from "@/lib/hr-workforce/workspace-projection";
 import { DEFAULT_OH } from "@/lib/hr-workforce/default-oh";
 import { migrateRoleOperationalType } from "@/lib/hr-workforce/role-operational-type";
 import { nowIso } from "@/lib/hr-workforce/structure-utils";
 import { seedDemoWorkforceIfEmpty, type DemoWorkforceSeedResult } from "@/lib/hr-workforce/demo-workforce-seed";
 import { getHrWorkforceHybridStateStorage } from "@/lib/hr-workforce/hr-workforce-hybrid-persist-storage";
+import {
+  HR_WORKFORCE_ENGINE_VERSION,
+  HR_WORKFORCE_FORMULA_VERSION,
+} from "@/lib/hr-workforce/workspace-versions";
+import { validateHrSnapshotPayloadForRestore } from "@/lib/hr-workforce/snapshot-restore";
 
 const DEFAULT_HR_SETTINGS: HrGlobalSettings = {
   workingDaysPerWeek: 5,
@@ -158,6 +163,10 @@ interface HrWorkforceState {
   importLogs: HrImportLogEntry[];
   snapshots: HrSnapshotRecord[];
 
+  /** Session-only: last failed snapshot restore message (not persisted). */
+  lastSnapshotRestoreError: string | null;
+  clearSnapshotRestoreError: () => void;
+
   setHrGlobalSettings: (patch: Partial<HrGlobalSettings>) => void;
   setOhManualForBusinessUnit: (businessUnitId: string, patch: Partial<OhManualSettings>) => void;
 
@@ -242,6 +251,10 @@ function emptyRoleTemplate(
   };
 }
 
+function snapshotVersionOrDefault(n: unknown, fallback: number): number {
+  return typeof n === "number" && Number.isFinite(n) ? n : fallback;
+}
+
 function migrateV1Payload(
   p: HrSnapshotPayloadV1
 ): Omit<HrSnapshotPayloadV2, "v" | "hrGlobalSettings" | "ohManual" | "ohManualByBusinessUnitId"> {
@@ -291,6 +304,8 @@ function migrateV1Payload(
 
 export function parseHrSnapshotPayload(json: string): HrSnapshotPayloadV2 {
   const raw = JSON.parse(json) as HrSnapshotPayloadV2 & { v?: number };
+  const engineDefault = 1;
+  const formulaDefault = 1;
   if (raw && typeof raw === "object" && raw.v === 2) {
     const hrRaw = raw.hrGlobalSettings as LegacyHrGlobal;
     const hrGlobalSettings = migratedHrGlobalSettings(hrRaw);
@@ -304,6 +319,8 @@ export function parseHrSnapshotPayload(json: string): HrSnapshotPayloadV2 {
     );
     return {
       v: 2,
+      engineVersion: snapshotVersionOrDefault(raw.engineVersion, engineDefault),
+      formulaVersion: snapshotVersionOrDefault(raw.formulaVersion, formulaDefault),
       businessUnits: raw.businessUnits,
       departments: raw.departments,
       teams: raw.teams,
@@ -322,6 +339,8 @@ export function parseHrSnapshotPayload(json: string): HrSnapshotPayloadV2 {
   }, hrRaw);
   return {
     v: 2,
+    engineVersion: engineDefault,
+    formulaVersion: formulaDefault,
     ...m,
     hrGlobalSettings,
     ohManualByBusinessUnitId,
@@ -426,7 +445,9 @@ export const useHrWorkforceStore = create<HrWorkforceState>()(
       ohManualByBusinessUnitId: { ...initialOhManualByBusinessUnitId },
       importLogs: [],
       snapshots: [],
+      lastSnapshotRestoreError: null,
 
+      clearSnapshotRestoreError: () => set({ lastSnapshotRestoreError: null }),
       setHrGlobalSettings: (patch) =>
         set({ hrGlobalSettings: { ...get().hrGlobalSettings, ...patch } }),
       setOhManualForBusinessUnit: (businessUnitId, patch) => {
@@ -660,9 +681,13 @@ export const useHrWorkforceStore = create<HrWorkforceState>()(
           id: newHrId("snap"),
           createdAt: new Date().toISOString(),
           label: label.trim() || "Snapshot",
+          engineVersion: HR_WORKFORCE_ENGINE_VERSION,
+          formulaVersion: HR_WORKFORCE_FORMULA_VERSION,
         };
         const payload: HrSnapshotPayloadV2 = {
           v: 2,
+          engineVersion: HR_WORKFORCE_ENGINE_VERSION,
+          formulaVersion: HR_WORKFORCE_FORMULA_VERSION,
           businessUnits: s.businessUnits,
           departments: s.departments,
           teams: s.teams,
@@ -680,8 +705,22 @@ export const useHrWorkforceStore = create<HrWorkforceState>()(
       restoreSnapshot: (snapshotId) => {
         const s = get();
         const snap = s.snapshots.find((x) => x.meta.id === snapshotId);
-        if (!snap) return;
-        const payload = parseHrSnapshotPayload(snap.payloadJson);
+        if (!snap) {
+          set({ lastSnapshotRestoreError: "Snapshot not found." });
+          return;
+        }
+        let payload: HrSnapshotPayloadV2;
+        try {
+          payload = parseHrSnapshotPayload(snap.payloadJson);
+        } catch {
+          set({ lastSnapshotRestoreError: "Invalid snapshot data (JSON parse failed)." });
+          return;
+        }
+        const check = validateHrSnapshotPayloadForRestore(payload);
+        if (!check.ok) {
+          set({ lastSnapshotRestoreError: check.errors.join(" ") });
+          return;
+        }
         const roles = migratedRoles(payload.roles, payload.hrGlobalSettings.defaultCurrency).map(migrateRoleOperationalType);
         set({
           businessUnits: payload.businessUnits,
@@ -690,6 +729,7 @@ export const useHrWorkforceStore = create<HrWorkforceState>()(
           roles,
           hrGlobalSettings: payload.hrGlobalSettings,
           ohManualByBusinessUnitId: payload.ohManualByBusinessUnitId,
+          lastSnapshotRestoreError: null,
         });
       },
 
@@ -706,7 +746,7 @@ export const useHrWorkforceStore = create<HrWorkforceState>()(
           const pb = parseHrSnapshotPayload(b.payloadJson);
           const headA = pa.roles.filter((r) => !r.archived).reduce((x, r) => x + r.employeeCount, 0);
           const headB = pb.roles.filter((r) => !r.archived).reduce((x, r) => x + r.employeeCount, 0);
-          const ma = deriveHrWorkforceModel({
+          const ma = deriveWorkspaceProjection({
             roles: pa.roles,
             businessUnits: pa.businessUnits,
             departments: pa.departments,
@@ -714,7 +754,7 @@ export const useHrWorkforceStore = create<HrWorkforceState>()(
             hrGlobalSettings: pa.hrGlobalSettings,
             ohManualByBusinessUnitId: pa.ohManualByBusinessUnitId ?? {},
           });
-          const mb = deriveHrWorkforceModel({
+          const mb = deriveWorkspaceProjection({
             roles: pb.roles,
             businessUnits: pb.businessUnits,
             departments: pb.departments,
@@ -748,6 +788,7 @@ export const useHrWorkforceStore = create<HrWorkforceState>()(
           ohManualByBusinessUnitId: { [org.businessUnits[0].id]: { ...DEFAULT_OH } },
           importLogs: [],
           snapshots: [],
+          lastSnapshotRestoreError: null,
         });
       },
 

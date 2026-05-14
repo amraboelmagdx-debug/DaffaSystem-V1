@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { deriveHrWorkforceModel } from "@/lib/hr-workforce/selectors";
+import { deriveWorkspaceProjection } from "@/lib/hr-workforce/workspace-projection";
 import { DEFAULT_OH } from "@/lib/hr-workforce/default-oh";
 import {
   computeOhScenarioForBu,
@@ -94,7 +94,7 @@ export function HrWorkforceIntelligenceView() {
 
   const modelFull = useMemo(
     () =>
-      deriveHrWorkforceModel({
+      deriveWorkspaceProjection({
         roles,
         businessUnits,
         departments,
@@ -107,7 +107,7 @@ export function HrWorkforceIntelligenceView() {
 
   const modelScoped = useMemo(
     () =>
-      deriveHrWorkforceModel({
+      deriveWorkspaceProjection({
         roles: scopeStructure.rolesSlice,
         businessUnits: scopeStructure.businessUnitsSlice,
         departments: scopeStructure.departmentsSlice,
