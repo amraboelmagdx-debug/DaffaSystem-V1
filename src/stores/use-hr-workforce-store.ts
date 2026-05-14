@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { createJSONStorage, persist } from "zustand/middleware";
 import type {
   HrBusinessUnit,
   HrDepartment,
@@ -17,6 +17,8 @@ import { deriveHrWorkforceModel } from "@/lib/hr-workforce/selectors";
 import { DEFAULT_OH } from "@/lib/hr-workforce/default-oh";
 import { migrateRoleOperationalType } from "@/lib/hr-workforce/role-operational-type";
 import { nowIso } from "@/lib/hr-workforce/structure-utils";
+import { seedDemoWorkforceIfEmpty, type DemoWorkforceSeedResult } from "@/lib/hr-workforce/demo-workforce-seed";
+import { getHrWorkforceHybridStateStorage } from "@/lib/hr-workforce/hr-workforce-hybrid-persist-storage";
 
 const DEFAULT_HR_SETTINGS: HrGlobalSettings = {
   workingDaysPerWeek: 5,
@@ -195,6 +197,8 @@ interface HrWorkforceState {
   compareSnapshots: (aId: string, bId: string) => HrSnapshotCompareResult | null;
 
   resetModule: () => void;
+  /** Adds illustrative roles, a delivery department + team, and composed OH lines when there are no active roles. */
+  seedDemoWorkforce: () => DemoWorkforceSeedResult;
 }
 
 export interface HrSnapshotCompareResult {
@@ -746,9 +750,32 @@ export const useHrWorkforceStore = create<HrWorkforceState>()(
           snapshots: [],
         });
       },
+
+      seedDemoWorkforce: () => {
+        const st = get();
+        const primaryBuId = st.businessUnits[0]?.id;
+        return seedDemoWorkforceIfEmpty({
+          roles: st.roles,
+          businessUnits: st.businessUnits,
+          departments: st.departments,
+          teams: st.teams,
+          defaultCurrency: st.hrGlobalSettings.defaultCurrency,
+          ohManualForPrimaryBu: primaryBuId
+            ? st.ohManualByBusinessUnitId[primaryBuId]
+            : undefined,
+          addDepartment: (businessUnitId, name) => get().addDepartment(businessUnitId, name),
+          addTeam: (departmentId, name) => get().addTeam(departmentId, name),
+          addRole: (partial) => {
+            get().addRole(partial);
+          },
+          setOhManualForBusinessUnit: (businessUnitId, patch) =>
+            get().setOhManualForBusinessUnit(businessUnitId, patch),
+        });
+      },
     }),
     {
       name: "efp-hr-workforce",
+      storage: createJSONStorage(getHrWorkforceHybridStateStorage),
       merge: (persisted, current) => {
         if (persisted == null || typeof persisted !== "object") return current;
         const p = normalizePersistedState(persisted as Partial<HrWorkforceState>);

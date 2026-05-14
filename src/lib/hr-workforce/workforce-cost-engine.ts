@@ -80,6 +80,24 @@ export function monthlyAdditionalCostsForRole(role: JobRole, monthlyBaseCost: nu
   return sum;
 }
 
+/** Approx. monthly OH dollars loaded: Σ (OH-adjusted $/hr − standard $/hr) × monthly hours × headcount. */
+export function monthlyOhLoadMarginForRoles(
+  roles: JobRole[],
+  breakdownById: Map<string, RoleCostBreakdown>,
+  settings: HrGlobalSettings
+): number {
+  const mh = monthlyWorkingHoursPerEmployee(settings);
+  let s = 0;
+  for (const r of roles) {
+    if (r.archived) continue;
+    const b = breakdownById.get(r.id);
+    if (!b) continue;
+    const n = Math.max(0, Math.floor(r.employeeCount));
+    s += (b.ohAdjustedHourlyCost - b.standardHourlyCost) * mh * n;
+  }
+  return s;
+}
+
 /**
  * Per-role workforce costs. Direct labor uses stable monthly hours × headcount denominator
  * for hourly rate (does not bake utilization into direct rate — utilization reserved for OH path).

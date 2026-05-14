@@ -30,6 +30,7 @@ import { effectiveOhBillableHeadcount } from "@/lib/hr-workforce/structure-utils
 import { effectiveOperationalRoleType } from "@/lib/hr-workforce/role-operational-type";
 import { aggregateByDepartment, buildWorkforceDashboardAggregates } from "@/lib/hr-workforce/aggregates";
 import { cn } from "@/lib/utils";
+import { HrWorkforceDemoSeedBanner } from "./hr-workforce-demo-seed-banner";
 import type { HrDashChartLabels } from "./hr-workforce-dashboard-charts";
 import type { RoleCostBreakdown } from "@/types/hr-workforce";
 
@@ -329,6 +330,8 @@ export function HrWorkforceDashboardView() {
         <p className="mt-1 text-sm text-muted-foreground">{t("dashSubtitle")}</p>
         <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">{t("dashContextNote")}</p>
       </div>
+
+      <HrWorkforceDemoSeedBanner />
 
       <Card className="border-primary/20 bg-gradient-to-r from-primary/[0.06] via-card to-card">
         <CardContent className="flex flex-col gap-3 pt-6 sm:flex-row sm:items-end sm:justify-between">

@@ -6,6 +6,11 @@ import { cn } from "@/lib/utils";
 
 const tabs = [
   { href: "/hr-workforce", key: "tabOverview" as const, match: (p: string) => p === "/hr-workforce" },
+  {
+    href: "/hr-workforce/intelligence",
+    key: "tabIntelligence" as const,
+    match: (p: string) => p.startsWith("/hr-workforce/intelligence"),
+  },
   { href: "/hr-workforce/roles", key: "tabRoles" as const, match: (p: string) => p.startsWith("/hr-workforce/roles") },
   { href: "/hr-workforce/settings", key: "tabSettings" as const, match: (p: string) => p.startsWith("/hr-workforce/settings") },
   { href: "/hr-workforce/import", key: "tabImport" as const, match: (p: string) => p.startsWith("/hr-workforce/import") },
