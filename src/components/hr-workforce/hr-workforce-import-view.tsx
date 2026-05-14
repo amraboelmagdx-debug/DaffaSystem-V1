@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,8 +18,6 @@ import {
   type ImportColumnKey,
   IMPORT_COLUMN_LABELS,
 } from "@/lib/hr-workforce/import-parser";
-import type { ParsedImportRow } from "@/lib/hr-workforce/import-parser";
-import { buildImportPlan } from "@/lib/hr-workforce/import-dry-run";
 import { useHrWorkforceStore } from "@/stores/use-hr-workforce-store";
 
 const COLUMN_KEYS: ImportColumnKey[] = [
@@ -41,52 +38,37 @@ const COLUMN_KEYS: ImportColumnKey[] = [
 
 export function HrWorkforceImportView() {
   const t = useTranslations("hrWorkforce");
-  const businessUnits = useHrWorkforceStore((s) => s.businessUnits);
-  const departments = useHrWorkforceStore((s) => s.departments);
-  const teams = useHrWorkforceStore((s) => s.teams);
-  const hrGlobalSettings = useHrWorkforceStore((s) => s.hrGlobalSettings);
   const applyImportDeltas = useHrWorkforceStore((s) => s.applyImportDeltas);
   const pushImportLog = useHrWorkforceStore((s) => s.pushImportLog);
+  const importSessionLoadParsed = useHrWorkforceStore((s) => s.importSessionLoadParsed);
+  const importSessionSetColumnMapping = useHrWorkforceStore((s) => s.importSessionSetColumnMapping);
+  const importSessionRunDryRun = useHrWorkforceStore((s) => s.importSessionRunDryRun);
+  const importSessionClearAfterSuccessfulCommit = useHrWorkforceStore(
+    (s) => s.importSessionClearAfterSuccessfulCommit
+  );
 
-  const [fileName, setFileName] = useState("");
-  const [headers, setHeaders] = useState<string[]>([]);
-  const [rows, setRows] = useState<ParsedImportRow[]>([]);
-  const [columnMap, setColumnMap] = useState<Partial<Record<ImportColumnKey, string>>>({});
-  const [errors, setErrors] = useState<string[]>([]);
-  const [plan, setPlan] = useState<ReturnType<typeof buildImportPlan> | null>(null);
+  const fileName = useHrWorkforceStore((s) => s.importSessionFileName);
+  const headers = useHrWorkforceStore((s) => s.importSessionHeaders);
+  const rows = useHrWorkforceStore((s) => s.importSessionRows);
+  const columnMap = useHrWorkforceStore((s) => s.importSessionColumnMap);
+  const errors = useHrWorkforceStore((s) => s.importSessionErrors);
+  const plan = useHrWorkforceStore((s) => s.importSessionPlan);
 
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
-    setFileName(f.name);
     const buf = await f.arrayBuffer();
     const { headers: h, rows: r } = parseWorkbookFirstSheet(buf);
-    setHeaders(h);
-    setRows(r);
-    setColumnMap(guessColumnMap(h));
-    setErrors([]);
-    setPlan(null);
+    importSessionLoadParsed({
+      fileName: f.name,
+      headers: h,
+      rows: r,
+      columnMap: guessColumnMap(h),
+    });
   };
 
   const runDryRun = () => {
-    const st = useHrWorkforceStore.getState();
-    const result = buildImportPlan(
-      {
-        businessUnits: st.businessUnits,
-        departments: st.departments,
-        teams: st.teams,
-        defaultCurrency: st.hrGlobalSettings.defaultCurrency,
-      },
-      rows,
-      columnMap
-    );
-    if (!result.ok) {
-      setErrors(result.errors);
-      setPlan(null);
-      return;
-    }
-    setErrors([]);
-    setPlan(result);
+    importSessionRunDryRun();
   };
 
   const commit = () => {
@@ -97,11 +79,7 @@ export function HrWorkforceImportView() {
       rowCount: plan.deltas.roles.length,
       status: "success",
     });
-    setRows([]);
-    setHeaders([]);
-    setPlan(null);
-    setErrors([]);
-    setFileName("");
+    importSessionClearAfterSuccessfulCommit();
   };
 
   const downloadTemplate = () => {
@@ -152,7 +130,7 @@ export function HrWorkforceImportView() {
                 <Select
                   value={columnMap[key] ?? "__unmap__"}
                   onValueChange={(v) =>
-                    setColumnMap((m) => ({ ...m, [key]: v === "__unmap__" ? undefined : v }))
+                    importSessionSetColumnMapping(key, v === "__unmap__" ? undefined : v)
                   }
                 >
                   <SelectTrigger>

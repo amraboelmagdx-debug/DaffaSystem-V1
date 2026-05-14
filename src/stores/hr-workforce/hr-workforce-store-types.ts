@@ -1,4 +1,5 @@
-import type { ImportApplyDeltas } from "@/lib/hr-workforce/import-dry-run";
+import type { ImportApplyDeltas, ImportPlanResult } from "@/lib/hr-workforce/import-dry-run";
+import type { ImportColumnKey, ParsedImportRow } from "@/lib/hr-workforce/import-parser";
 import type { DemoWorkforceSeedResult } from "@/lib/hr-workforce/demo-workforce-seed";
 import type {
   HrBusinessUnit,
@@ -39,6 +40,15 @@ export interface HrWorkforceState {
   hrGlobalSettings: HrGlobalSettings;
   ohManualByBusinessUnitId: Record<string, OhManualSettings>;
   importLogs: HrImportLogEntry[];
+  /** Ephemeral import UI / session (not persisted). */
+  importSessionFileName: string;
+  importSessionHeaders: string[];
+  importSessionRows: ParsedImportRow[];
+  importSessionColumnMap: Partial<Record<ImportColumnKey, string>>;
+  importSessionErrors: string[];
+  importSessionPlan: ImportPlanResult | null;
+  /** ISO timestamp of last dry-run attempt (success or failure). */
+  importSessionLastDryRunAt: string | null;
   snapshots: HrSnapshotRecord[];
 
   /** Session-only: last failed snapshot restore message (not persisted). */
@@ -73,6 +83,15 @@ export interface HrWorkforceState {
   pushImportLog: (entry: Omit<HrImportLogEntry, "id" | "createdAt"> & Partial<Pick<HrImportLogEntry, "id" | "createdAt">>) => void;
   deleteImportLog: (logId: string) => void;
   clearAllImportLogs: () => void;
+  importSessionLoadParsed: (payload: {
+    fileName: string;
+    headers: string[];
+    rows: ParsedImportRow[];
+    columnMap: Partial<Record<ImportColumnKey, string>>;
+  }) => void;
+  importSessionSetColumnMapping: (key: ImportColumnKey, sheetHeader: string | undefined) => void;
+  importSessionRunDryRun: () => void;
+  importSessionClearAfterSuccessfulCommit: () => void;
 
   saveSnapshot: (label: string) => void;
   restoreSnapshot: (snapshotId: string) => void;

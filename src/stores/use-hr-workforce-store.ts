@@ -4,7 +4,6 @@ import type {
   HrBusinessUnit,
   HrDepartment,
   HrGlobalSettings,
-  HrImportLogEntry,
   HrTeam,
   JobRole,
   OhManualSettings,
@@ -26,6 +25,7 @@ import {
   resolveOhManualMapForUnits,
 } from "@/lib/hr-workforce/hr-workforce-persist-migrate";
 import type { HrWorkforceState } from "@/stores/hr-workforce/hr-workforce-store-types";
+import { createHrImportSlice, getImportSliceResetPayload } from "@/stores/hr-workforce/slices/hr-import-slice";
 import { createHrSnapshotSlice } from "@/stores/hr-workforce/slices/hr-snapshot-slice";
 
 function seedOrg(): {
@@ -172,6 +172,7 @@ const initialOhManualByBusinessUnitId: Record<string, OhManualSettings> = {
 export const useHrWorkforceStore = create<HrWorkforceState>()(
   persist(
     (set, get, store) => ({
+      ...createHrImportSlice(set, get, store),
       ...createHrSnapshotSlice(set, get, store),
 
       businessUnits: seed.businessUnits,
@@ -180,7 +181,6 @@ export const useHrWorkforceStore = create<HrWorkforceState>()(
       roles: [],
       hrGlobalSettings: { ...DEFAULT_HR_SETTINGS },
       ohManualByBusinessUnitId: { ...initialOhManualByBusinessUnitId },
-      importLogs: [],
 
       setHrGlobalSettings: (patch) =>
         set({ hrGlobalSettings: { ...get().hrGlobalSettings, ...patch } }),
@@ -392,23 +392,6 @@ export const useHrWorkforceStore = create<HrWorkforceState>()(
           };
         }),
 
-      pushImportLog: (entry) => {
-        const full: HrImportLogEntry = {
-          id: entry.id ?? newHrId("log"),
-          createdAt: entry.createdAt ?? new Date().toISOString(),
-          fileName: entry.fileName,
-          rowCount: entry.rowCount,
-          status: entry.status,
-          message: entry.message,
-        };
-        set({ importLogs: [full, ...get().importLogs].slice(0, 100) });
-      },
-
-      deleteImportLog: (logId) =>
-        set({ importLogs: get().importLogs.filter((l) => l.id !== logId) }),
-
-      clearAllImportLogs: () => set({ importLogs: [] }),
-
       resetModule: () => {
         const org = seedOrg();
         set({
@@ -418,9 +401,9 @@ export const useHrWorkforceStore = create<HrWorkforceState>()(
           roles: [],
           hrGlobalSettings: { ...DEFAULT_HR_SETTINGS },
           ohManualByBusinessUnitId: { [org.businessUnits[0].id]: { ...DEFAULT_OH } },
-          importLogs: [],
           snapshots: [],
           lastSnapshotRestoreError: null,
+          ...getImportSliceResetPayload(),
         });
       },
 
