@@ -1,0 +1,434 @@
+/**
+ * Full measure metadata (Phase 2 — governance + explainability seed).
+ * Single catalog: ids, semantics, units, engines, lineage hints.
+ *
+ * 💡 الفرق بين `semanticMode` و `id`:
+ * - `id` ثابت في الكود والـ API.
+ * - `semanticMode` يوضّح المعنى للمنتج (شهري/سنوي/مرجّح…) للمستخدم وللمستقبل (أبعاد، فعليات).
+ */
+
+import type { MeasureId } from "./measure-ids";
+import { MEASURE_ID } from "./measure-ids";
+import type { FormulaOwner } from "./planning-measure-types";
+
+export type MeasureUnit =
+  | "currency_monthly"
+  | "sar_annual"
+  | "ratio"
+  | "count"
+  | "index"
+  | "none";
+
+export type MeasureFormat = "currency" | "pct" | "decimal" | "integer";
+
+export type MeasurePeriodicity = "month" | "annual" | "none" | "rolling_proxy";
+
+export type MeasureCategory =
+  | "income_statement"
+  | "workbook"
+  | "pipeline"
+  | "sales_plan"
+  | "diagnostic";
+
+export type MeasureVisibility = "executive" | "sales_plan" | "both" | "internal";
+
+export type MeasureMetadata = {
+  id: MeasureId;
+  semanticMode: string;
+  /** English fallback for tooling / tests */
+  label: string;
+  /** next-intl key relative to `measures` namespace, e.g. `labels.cmBlendedStreams` */
+  labelKey: string;
+  /** next-intl key relative to `measures` namespace, e.g. `registry.revenueScenario` */
+  descriptionKey: string;
+  unit: MeasureUnit;
+  format: MeasureFormat;
+  periodicity: MeasurePeriodicity;
+  dependsOn: readonly MeasureId[];
+  sourceEngine: FormulaOwner;
+  category: MeasureCategory;
+  visibility: MeasureVisibility;
+  /** Ordered human-readable path for lineage / bulbs */
+  calculationPath: readonly string[];
+};
+
+export const MEASURE_CATALOG: readonly MeasureMetadata[] = [
+  {
+    id: MEASURE_ID.CM_BLENDED_STREAMS,
+    semanticMode: "cm.blended.stream_weighted",
+    label: "Stream-weighted blended CM",
+    labelKey: "labels.cmBlendedStreams",
+    descriptionKey: "registry.cmBlendedStreams",
+    unit: "ratio",
+    format: "pct",
+    periodicity: "none",
+    dependsOn: [],
+    sourceEngine: "calculations-engine",
+    category: "income_statement",
+    visibility: "executive",
+    calculationPath: ["contributionFromStreams pattern", "DemoRevenueStream weights"],
+  },
+  {
+    id: MEASURE_ID.REVENUE_BASELINE_MONTHLY,
+    semanticMode: "revenue.monthly.baseline_engine",
+    label: "Baseline monthly revenue (engine)",
+    labelKey: "labels.revenueBaselineMonthly",
+    descriptionKey: "registry.revenueBaseline",
+    unit: "currency_monthly",
+    format: "currency",
+    periodicity: "month",
+    dependsOn: [MEASURE_ID.CM_BLENDED_STREAMS],
+    sourceEngine: "calculations-engine",
+    category: "income_statement",
+    visibility: "executive",
+    calculationPath: ["runForecastEngine", "CompanyInputs.revenueMonthly"],
+  },
+  {
+    id: MEASURE_ID.REVENUE_SCENARIO_MONTHLY,
+    semanticMode: "revenue.monthly.scenario_active",
+    label: "Scenario monthly revenue",
+    labelKey: "labels.revenueScenarioMonthly",
+    descriptionKey: "registry.revenueScenario",
+    unit: "currency_monthly",
+    format: "currency",
+    periodicity: "month",
+    dependsOn: [MEASURE_ID.CM_BLENDED_STREAMS],
+    sourceEngine: "calculations-engine",
+    category: "income_statement",
+    visibility: "executive",
+    calculationPath: ["applyScenario", "growthAdj × conversionRateAdj", "runForecastEngine"],
+  },
+  {
+    id: MEASURE_ID.GROSS_PROFIT_SCENARIO_MONTHLY,
+    semanticMode: "gp.monthly.scenario_active",
+    label: "Gross profit (scenario)",
+    labelKey: "labels.grossProfitScenario",
+    descriptionKey: "registry.grossProfit",
+    unit: "currency_monthly",
+    format: "currency",
+    periodicity: "month",
+    dependsOn: [MEASURE_ID.REVENUE_SCENARIO_MONTHLY, MEASURE_ID.CM_BLENDED_STREAMS],
+    sourceEngine: "calculations-engine",
+    category: "income_statement",
+    visibility: "executive",
+    calculationPath: ["runForecastEngine", "revenue − variable costs"],
+  },
+  {
+    id: MEASURE_ID.NET_PROFIT_SCENARIO_MONTHLY,
+    semanticMode: "np.monthly.scenario_active",
+    label: "Net profit (scenario)",
+    labelKey: "labels.netProfitScenario",
+    descriptionKey: "registry.netProfit",
+    unit: "currency_monthly",
+    format: "currency",
+    periodicity: "month",
+    dependsOn: [MEASURE_ID.GROSS_PROFIT_SCENARIO_MONTHLY],
+    sourceEngine: "calculations-engine",
+    category: "income_statement",
+    visibility: "executive",
+    calculationPath: ["runForecastEngine", "grossProfit − fixedCostsMonthly"],
+  },
+  {
+    id: MEASURE_ID.ROI_SCENARIO_ON_FIXED,
+    semanticMode: "roi.scenario_on_fixed_monthly",
+    label: "ROI on fixed (scenario)",
+    labelKey: "labels.roiScenario",
+    descriptionKey: "registry.roiScenario",
+    unit: "ratio",
+    format: "pct",
+    periodicity: "month",
+    dependsOn: [MEASURE_ID.NET_PROFIT_SCENARIO_MONTHLY],
+    sourceEngine: "calculations-engine",
+    category: "income_statement",
+    visibility: "executive",
+    calculationPath: ["runForecastEngine", "netProfit ÷ fixedCostsMonthly"],
+  },
+  {
+    id: MEASURE_ID.EBITDA_SCENARIO_MONTHLY,
+    semanticMode: "ebitda.monthly.scenario_active",
+    label: "EBITDA (scenario)",
+    labelKey: "labels.ebitdaScenario",
+    descriptionKey: "registry.ebitdaScenario",
+    unit: "currency_monthly",
+    format: "currency",
+    periodicity: "month",
+    dependsOn: [MEASURE_ID.NET_PROFIT_SCENARIO_MONTHLY],
+    sourceEngine: "calculations-engine",
+    category: "income_statement",
+    visibility: "executive",
+    calculationPath: ["runForecastEngine", "ebitda = netProfit (demo simplification)"],
+  },
+  {
+    id: MEASURE_ID.NP_PCT_SCENARIO,
+    semanticMode: "np_pct.scenario_active",
+    label: "Net profit % of revenue",
+    labelKey: "labels.npPctScenario",
+    descriptionKey: "registry.npPctScenario",
+    unit: "ratio",
+    format: "pct",
+    periodicity: "month",
+    dependsOn: [MEASURE_ID.NET_PROFIT_SCENARIO_MONTHLY, MEASURE_ID.REVENUE_SCENARIO_MONTHLY],
+    sourceEngine: "calculations-engine",
+    category: "income_statement",
+    visibility: "executive",
+    calculationPath: ["runForecastEngine", "netProfit ÷ revenue"],
+  },
+  {
+    id: MEASURE_ID.OPERATING_MARGIN_SCENARIO,
+    semanticMode: "operating_margin.scenario_active",
+    label: "Operating margin %",
+    labelKey: "labels.operatingMarginScenario",
+    descriptionKey: "registry.operatingMarginScenario",
+    unit: "ratio",
+    format: "pct",
+    periodicity: "month",
+    dependsOn: [MEASURE_ID.REVENUE_SCENARIO_MONTHLY, MEASURE_ID.GROSS_PROFIT_SCENARIO_MONTHLY],
+    sourceEngine: "calculations-engine",
+    category: "income_statement",
+    visibility: "executive",
+    calculationPath: ["runForecastEngine", "grossProfit ÷ revenue"],
+  },
+  {
+    id: MEASURE_ID.SALES_TARGET_SCENARIO_MONTHLY,
+    semanticMode: "revenue.monthly.sales_target_scenario",
+    label: "Sales target revenue (scenario path)",
+    labelKey: "labels.salesTargetScenario",
+    descriptionKey: "registry.salesTargetScenario",
+    unit: "currency_monthly",
+    format: "currency",
+    periodicity: "month",
+    dependsOn: [MEASURE_ID.CM_BLENDED_STREAMS],
+    sourceEngine: "calculations-engine",
+    category: "income_statement",
+    visibility: "executive",
+    calculationPath: ["runForecastEngine", "fixed ÷ (CM − targetNP)"],
+  },
+  {
+    id: MEASURE_ID.SALES_GAP_SCENARIO_MONTHLY,
+    semanticMode: "revenue.monthly.sales_gap_scenario",
+    label: "Sales needed gap",
+    labelKey: "labels.salesGapScenario",
+    descriptionKey: "registry.salesGapScenario",
+    unit: "currency_monthly",
+    format: "currency",
+    periodicity: "month",
+    dependsOn: [MEASURE_ID.SALES_TARGET_SCENARIO_MONTHLY, MEASURE_ID.REVENUE_SCENARIO_MONTHLY],
+    sourceEngine: "calculations-engine",
+    category: "income_statement",
+    visibility: "executive",
+    calculationPath: ["runForecastEngine", "max(0, salesTarget − revenue)"],
+  },
+  {
+    id: MEASURE_ID.BURN_RATE_SCENARIO_MONTHLY,
+    semanticMode: "burn.monthly.scenario_active",
+    label: "Burn rate (monthly)",
+    labelKey: "labels.burnScenario",
+    descriptionKey: "registry.burnScenario",
+    unit: "currency_monthly",
+    format: "currency",
+    periodicity: "month",
+    dependsOn: [MEASURE_ID.NET_PROFIT_SCENARIO_MONTHLY],
+    sourceEngine: "calculations-engine",
+    category: "income_statement",
+    visibility: "executive",
+    calculationPath: ["runForecastEngine", "abs(netProfit) if negative"],
+  },
+  {
+    id: MEASURE_ID.CM_BLENDED_WORKBOOK,
+    semanticMode: "cm.blended.workbook_lotf",
+    label: "Workbook blended CM",
+    labelKey: "labels.cmBlendedWorkbook",
+    descriptionKey: "registry.cmBlendedWorkbook",
+    unit: "ratio",
+    format: "pct",
+    periodicity: "none",
+    dependsOn: [],
+    sourceEngine: "workbook-engine",
+    category: "workbook",
+    visibility: "both",
+    calculationPath: ["pickBlendedMargin", "tier lines × optional blockWeightPct"],
+  },
+  {
+    id: MEASURE_ID.WORKBOOK_SALES_TARGET,
+    semanticMode: "revenue.workbook.sales_at_np_target",
+    label: "Workbook sales target",
+    labelKey: "labels.workbookSalesTarget",
+    descriptionKey: "registry.workbookSalesTarget",
+    unit: "currency_monthly",
+    format: "currency",
+    periodicity: "month",
+    dependsOn: [MEASURE_ID.CM_BLENDED_WORKBOOK],
+    sourceEngine: "workbook-engine",
+    category: "workbook",
+    visibility: "both",
+    calculationPath: ["computeWorkbookTargets", "salesTargetFromBlendedMargin"],
+  },
+  {
+    id: MEASURE_ID.WORKBOOK_NP_AT_TARGET,
+    semanticMode: "np.workbook.at_sales_target",
+    label: "NP at workbook sales target",
+    labelKey: "labels.workbookNpAtTarget",
+    descriptionKey: "registry.workbookNpAtTarget",
+    unit: "currency_monthly",
+    format: "currency",
+    periodicity: "month",
+    dependsOn: [MEASURE_ID.WORKBOOK_SALES_TARGET, MEASURE_ID.CM_BLENDED_WORKBOOK],
+    sourceEngine: "workbook-engine",
+    category: "workbook",
+    visibility: "both",
+    calculationPath: ["computeWorkbookTargets", "netProfitAtSalesTarget"],
+  },
+  {
+    id: MEASURE_ID.WORKBOOK_ROI_ON_FIXED,
+    semanticMode: "roi.workbook_on_fixed",
+    label: "Workbook ROI on fixed",
+    labelKey: "labels.workbookRoi",
+    descriptionKey: "registry.workbookRoi",
+    unit: "ratio",
+    format: "pct",
+    periodicity: "month",
+    dependsOn: [MEASURE_ID.WORKBOOK_NP_AT_TARGET],
+    sourceEngine: "workbook-engine",
+    category: "workbook",
+    visibility: "both",
+    calculationPath: ["computeWorkbookTargets", "roiFromNpAndFixed"],
+  },
+  {
+    id: MEASURE_ID.PIPELINE_WEIGHTED_VALUE,
+    semanticMode: "revenue.pipeline.weighted_expected",
+    label: "Weighted pipeline revenue",
+    labelKey: "labels.weightedPipeline",
+    descriptionKey: "registry.weightedPipeline",
+    unit: "currency_monthly",
+    format: "currency",
+    periodicity: "none",
+    dependsOn: [],
+    sourceEngine: "pipeline",
+    category: "pipeline",
+    visibility: "executive",
+    calculationPath: ["weightedRevenue", "Σ dealValue × probability"],
+  },
+  {
+    id: MEASURE_ID.PIPELINE_HEALTH,
+    semanticMode: "pipeline.health_score",
+    label: "Pipeline health score",
+    labelKey: "labels.pipelineHealth",
+    descriptionKey: "registry.pipelineHealth",
+    unit: "ratio",
+    format: "pct",
+    periodicity: "none",
+    dependsOn: [MEASURE_ID.PIPELINE_WEIGHTED_VALUE],
+    sourceEngine: "pipeline",
+    category: "pipeline",
+    visibility: "executive",
+    calculationPath: ["pipelineHealthScore"],
+  },
+  {
+    id: MEASURE_ID.PIPELINE_COVERAGE,
+    semanticMode: "pipeline.coverage_vs_quota_proxy",
+    label: "Pipeline coverage (proxy)",
+    labelKey: "labels.pipelineCoverage",
+    descriptionKey: "registry.pipelineCoverage",
+    unit: "ratio",
+    format: "pct",
+    periodicity: "none",
+    dependsOn: [MEASURE_ID.PIPELINE_WEIGHTED_VALUE],
+    sourceEngine: "pipeline",
+    category: "pipeline",
+    visibility: "executive",
+    calculationPath: ["coverageRatio", "weightedPipeline ÷ (revenueMonthly × 3)"],
+  },
+  {
+    id: MEASURE_ID.FORECAST_ACHIEVEMENT_PROXY,
+    semanticMode: "diagnostic.forecast_achievement_proxy",
+    label: "Forecast achievement (proxy)",
+    labelKey: "labels.forecastAchievement",
+    descriptionKey: "registry.forecastAchievement",
+    unit: "ratio",
+    format: "pct",
+    periodicity: "rolling_proxy",
+    dependsOn: [MEASURE_ID.REVENUE_SCENARIO_MONTHLY],
+    sourceEngine: "derived",
+    category: "diagnostic",
+    visibility: "executive",
+    calculationPath: ["min(1.2, scenarioRevenue ÷ (planMonthly × 1.05))"],
+  },
+  {
+    id: MEASURE_ID.SALES_PLAN_REVENUE_ANNUAL_SAR,
+    semanticMode: "revenue.annual.sar_sales_plan",
+    label: "Annual revenue (Sales Plan SAR)",
+    labelKey: "labels.salesPlanRevenueAnnual",
+    descriptionKey: "registry.salesPlanRevenue",
+    unit: "sar_annual",
+    format: "currency",
+    periodicity: "annual",
+    dependsOn: [],
+    sourceEngine: "sales-plan-build-model",
+    category: "sales_plan",
+    visibility: "sales_plan",
+    calculationPath: ["buildSalesPlanModel", "targets.salesTarget × 12"],
+  },
+  {
+    id: MEASURE_ID.SALES_PLAN_AWARDS_ANNUAL,
+    semanticMode: "count.awards.annual_required",
+    label: "Annual awards required",
+    labelKey: "labels.salesPlanAwardsAnnual",
+    descriptionKey: "registry.salesPlanAwards",
+    unit: "count",
+    format: "integer",
+    periodicity: "annual",
+    dependsOn: [MEASURE_ID.SALES_PLAN_REVENUE_ANNUAL_SAR, MEASURE_ID.SALES_PLAN_PORTFOLIO_ADV],
+    sourceEngine: "sales-plan-build-model",
+    category: "sales_plan",
+    visibility: "sales_plan",
+    calculationPath: ["requiredAwardsFromRevenue", "annual revenue ÷ portfolio ADV"],
+  },
+  {
+    id: MEASURE_ID.SALES_PLAN_CAPACITY_LOAD,
+    semanticMode: "capacity.load_index",
+    label: "Capacity load index",
+    labelKey: "labels.salesPlanCapacityLoad",
+    descriptionKey: "registry.salesPlanCapacity",
+    unit: "index",
+    format: "decimal",
+    periodicity: "annual",
+    dependsOn: [],
+    sourceEngine: "sales-plan-build-model",
+    category: "sales_plan",
+    visibility: "sales_plan",
+    calculationPath: ["buildSalesPlanModel", "capacity heuristic"],
+  },
+  {
+    id: MEASURE_ID.SALES_PLAN_PORTFOLIO_ADV,
+    semanticMode: "deal_value.portfolio_weighted_adv",
+    label: "Portfolio weighted ADV (SAR)",
+    labelKey: "labels.salesPlanPortfolioAdv",
+    descriptionKey: "registry.salesPlanAdv",
+    unit: "sar_annual",
+    format: "currency",
+    periodicity: "none",
+    dependsOn: [],
+    sourceEngine: "sales-plan-build-model",
+    category: "sales_plan",
+    visibility: "sales_plan",
+    calculationPath: ["weightedPortfolioAdv", "tier × mix × service share"],
+  },
+] as const;
+
+const byId = new Map<MeasureId, MeasureMetadata>(
+  MEASURE_CATALOG.map((m) => [m.id, m] as const)
+);
+
+export function measureMetadataById(id: MeasureId): MeasureMetadata | undefined {
+  return byId.get(id);
+}
+
+export function assertFullMeasureCatalog(): void {
+  const ids = new Set(Object.values(MEASURE_ID) as MeasureId[]);
+  const catalogIds = new Set(MEASURE_CATALOG.map((m) => m.id));
+  for (const id of ids) {
+    if (!catalogIds.has(id)) {
+      throw new Error(`MEASURE_CATALOG missing entry for ${id}`);
+    }
+  }
+}

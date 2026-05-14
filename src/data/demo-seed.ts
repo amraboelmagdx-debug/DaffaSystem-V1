@@ -1,0 +1,221 @@
+import type {
+  DemoCompany,
+  DemoForecastMonth,
+  DemoOpportunity,
+  DemoRevenueStream,
+  DemoScenario,
+} from "@/types/domain";
+
+export const DEMO_ORG_ID = "org-demo-001";
+
+export const demoCompanies: DemoCompany[] = [
+  {
+    id: "co-northwind",
+    name: "Northwind Advisory",
+    organizationId: DEMO_ORG_ID,
+    fixedCostsMonthly: 420_000,
+    growthTargetPct: 0.18,
+    marginTargetPct: 0.42,
+    npTargetPct: 0.12,
+    revenueMonthly: 1_250_000,
+    contributionMarginPct: 0.44,
+    marketSegments: ["Enterprise", "Mid-market", "Public sector"],
+  },
+  {
+    id: "co-aurora",
+    name: "Aurora Digital Studio",
+    organizationId: DEMO_ORG_ID,
+    fixedCostsMonthly: 185_000,
+    growthTargetPct: 0.22,
+    marginTargetPct: 0.38,
+    npTargetPct: 0.15,
+    revenueMonthly: 620_000,
+    contributionMarginPct: 0.41,
+    marketSegments: ["Agencies", "Consumer", "Tech"],
+  },
+];
+
+export const demoStreams: DemoRevenueStream[] = [
+  {
+    id: "rs-ret",
+    companyId: "co-northwind",
+    name: "Retainers",
+    contributionMarginPct: 0.48,
+    revenueWeight: 0.35,
+    avgDealSize: 240_000,
+    growthRatePct: 0.12,
+    conversionRatePct: 0.32,
+    salesCycleDays: 45,
+  },
+  {
+    id: "rs-svc",
+    companyId: "co-northwind",
+    name: "Managed services",
+    contributionMarginPct: 0.4,
+    revenueWeight: 0.28,
+    avgDealSize: 180_000,
+    growthRatePct: 0.18,
+    conversionRatePct: 0.22,
+    salesCycleDays: 60,
+  },
+  {
+    id: "rs-lic",
+    companyId: "co-northwind",
+    name: "Licensing",
+    contributionMarginPct: 0.62,
+    revenueWeight: 0.22,
+    avgDealSize: 420_000,
+    growthRatePct: 0.08,
+    conversionRatePct: 0.15,
+    salesCycleDays: 90,
+  },
+  {
+    id: "rs-evt",
+    companyId: "co-northwind",
+    name: "Events & workshops",
+    contributionMarginPct: 0.33,
+    revenueWeight: 0.15,
+    avgDealSize: 85_000,
+    growthRatePct: 0.25,
+    conversionRatePct: 0.28,
+    salesCycleDays: 30,
+  },
+];
+
+export const demoScenarios: DemoScenario[] = [
+  {
+    id: "sc-base",
+    companyId: "co-northwind",
+    name: "Baseline FY",
+    baseline: true,
+    npTargetPct: 0.12,
+    revenueMixAdj: 0,
+    conversionRateAdj: 0,
+    fixedCostAdj: 0,
+    growthAdj: 0,
+    pipelineWeightAdj: 0,
+  },
+  {
+    id: "sc-aggr",
+    companyId: "co-northwind",
+    name: "Aggressive growth",
+    baseline: false,
+    npTargetPct: 0.1,
+    revenueMixAdj: 0.15,
+    conversionRateAdj: 0.2,
+    fixedCostAdj: 0.08,
+    growthAdj: 0.22,
+    pipelineWeightAdj: 0.12,
+  },
+  {
+    id: "sc-cons",
+    companyId: "co-northwind",
+    name: "Conservative",
+    baseline: false,
+    npTargetPct: 0.14,
+    revenueMixAdj: -0.05,
+    conversionRateAdj: -0.1,
+    fixedCostAdj: -0.02,
+    growthAdj: 0.05,
+    pipelineWeightAdj: -0.05,
+  },
+  {
+    id: "sc-margin",
+    companyId: "co-northwind",
+    name: "High margin focus",
+    baseline: false,
+    npTargetPct: 0.16,
+    revenueMixAdj: 0.25,
+    conversionRateAdj: -0.05,
+    fixedCostAdj: 0.03,
+    growthAdj: 0.06,
+    pipelineWeightAdj: 0,
+  },
+  {
+    id: "sc-aur-base",
+    companyId: "co-aurora",
+    name: "Baseline FY",
+    baseline: true,
+    npTargetPct: 0.15,
+    revenueMixAdj: 0,
+    conversionRateAdj: 0,
+    fixedCostAdj: 0,
+    growthAdj: 0,
+    pipelineWeightAdj: 0,
+  },
+];
+
+export const demoOpportunities: DemoOpportunity[] = [
+  {
+    id: "op-1",
+    companyId: "co-northwind",
+    clientName: "Contoso",
+    name: "Global transformation",
+    stage: "negotiation",
+    probabilityPct: 0.55,
+    dealValue: 1_200_000,
+    revenueStreamId: "rs-ret",
+    marketSegment: "Enterprise",
+    riskScore: 2,
+  },
+  {
+    id: "op-2",
+    companyId: "co-northwind",
+    clientName: "Fabrikam",
+    name: "Analytics platform",
+    stage: "proposal",
+    probabilityPct: 0.35,
+    dealValue: 640_000,
+    revenueStreamId: "rs-lic",
+    marketSegment: "Mid-market",
+    riskScore: 3,
+  },
+  {
+    id: "op-3",
+    companyId: "co-northwind",
+    clientName: "Litware",
+    name: "Managed SOC",
+    stage: "qualification",
+    probabilityPct: 0.22,
+    dealValue: 380_000,
+    revenueStreamId: "rs-svc",
+    marketSegment: "Enterprise",
+    riskScore: 2,
+  },
+  {
+    id: "op-4",
+    companyId: "co-northwind",
+    clientName: "AdventureWorks",
+    name: "Executive workshop series",
+    stage: "discovery",
+    probabilityPct: 0.12,
+    dealValue: 95_000,
+    revenueStreamId: "rs-evt",
+    marketSegment: "Mid-market",
+    riskScore: 1,
+  },
+];
+
+function monthsAhead(n: number) {
+  const d = new Date();
+  d.setMonth(d.getMonth() + n);
+  return d.toISOString().slice(0, 7);
+}
+
+export function buildDemoForecastSeries(company: DemoCompany): DemoForecastMonth[] {
+  const base = company.revenueMonthly;
+  const g = company.growthTargetPct / 12;
+  return Array.from({ length: 12 }, (_, i) => {
+    const revenue = base * (1 + g * i);
+    const gp = revenue * company.contributionMarginPct;
+    const np = gp - company.fixedCostsMonthly;
+    return { month: monthsAhead(i - 6), revenue: revenue, grossProfit: gp, netProfit: np };
+  });
+}
+
+export const dealSizeTiers = [
+  { key: "tiny", label: "Tiny", min: 0, max: 25_000, avg: 12_000, margin: 0.28, prob: 0.35 },
+  { key: "standard", label: "Standard", min: 25_000, max: 100_000, avg: 60_000, margin: 0.35, prob: 0.28 },
+  { key: "big", label: "Big", min: 100_000, max: 500_000, avg: 220_000, margin: 0.4, prob: 0.2 },
+  { key: "mega", label: "Mega", min: 500_000, max: null, avg: 900_000, margin: 0.45, prob: 0.12 },
+];
