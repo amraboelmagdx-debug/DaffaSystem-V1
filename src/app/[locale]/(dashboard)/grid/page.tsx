@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PlanningWorkbookPanel } from "@/components/planning/planning-workbook-panel";
+import { OperationalPlanningPageShell } from "@/components/platform-simplification/operational-planning-page-shell";
 import { buildDemoForecastSeries } from "@/data/demo-seed";
 import { useWorkspaceStore } from "@/stores/use-workspace-store";
 
@@ -127,6 +128,11 @@ export default function ForecastGridPage() {
   };
 
   return (
+    <OperationalPlanningPageShell
+      routeContext="grid"
+      bannerVariant="derived"
+      usesDemoData
+    >
     <div className="mx-auto max-w-[1100px] space-y-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
@@ -226,5 +232,6 @@ export default function ForecastGridPage() {
         </CardContent>
       </Card>
     </div>
+    </OperationalPlanningPageShell>
   );
 }

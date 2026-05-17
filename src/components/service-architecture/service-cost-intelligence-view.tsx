@@ -27,11 +27,14 @@ import { exportAssumptionsToImportRows, buildServiceCostAssumptionImportPreview 
 import { DEFAULT_SERVICE_COST_ASSUMPTIONS } from "@/lib/service-cost-simulation/defaults";
 import { Badge } from "@/components/ui/badge";
 import { SampleDataPanel } from "@/components/sample-data/sample-data-panel";
+import { TransitionalArchitectureBanner } from "@/components/platform-simplification/transitional-architecture-banner";
 import { useOperationalWorkspace } from "@/hooks/use-operational-workspace";
+import { useWave0DevWarnings } from "@/hooks/use-wave0-dev-warnings";
 
 export function ServiceCostIntelligenceView() {
   const t = useTranslations("serviceArchitecture");
   const locale = useLocale();
+  useWave0DevWarnings("service-architecture/cost-intelligence");
 
   const templates = useServiceArchitectureStore((s) => s.serviceTemplates);
   const tiers = useServiceArchitectureStore((s) => s.serviceTiers);
@@ -165,6 +168,7 @@ export function ServiceCostIntelligenceView() {
 
   return (
     <div className="space-y-6">
+      <TransitionalArchitectureBanner variant="derived" usesSampleData />
       <SampleDataPanel moduleId="service-cost-simulation-prefs" />
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{t("costIntelTitle")}</h1>

@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { OperationalPlanningPageShell } from "@/components/platform-simplification/operational-planning-page-shell";
 import type { DemoOpportunity, OpportunityStage } from "@/types/domain";
 import { formatCurrency, formatPct } from "@/lib/calculations/engine";
 import { stageLeakage } from "@/lib/calculations/pipeline";
@@ -118,45 +119,53 @@ export default function PipelinePage() {
   });
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Pipeline intelligence</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Weighted revenue, stage leakage heuristics, and inline edits sync to the
-          executive dashboard instantly.
-        </p>
+    <OperationalPlanningPageShell
+      routeContext="pipeline"
+      bannerVariant="deprecated"
+      usesSampleData
+    >
+      <div className="mx-auto max-w-7xl space-y-6">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">Pipeline intelligence</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Weighted revenue, stage leakage heuristics, and inline edits sync to the
+            executive dashboard instantly.
+          </p>
+        </div>
+        <Card className="border-border/60 bg-card/60 backdrop-blur">
+          <CardHeader>
+            <CardTitle className="text-base">Open opportunities</CardTitle>
+          </CardHeader>
+          <CardContent className="overflow-x-auto">
+            <table className="app-data-table min-w-[900px]">
+              <thead>
+                {table.getHeaderGroups().map((hg) => (
+                  <tr key={hg.id}>
+                    {hg.headers.map((h) => (
+                      <th key={h.id}>
+                        {h.isPlaceholder
+                          ? null
+                          : flexRender(h.column.columnDef.header, h.getContext())}
+                      </th>
+                    ))}
+                  </tr>
+                ))}
+              </thead>
+              <tbody>
+                {table.getRowModel().rows.map((row) => (
+                  <tr key={row.id}>
+                    {row.getVisibleCells().map((cell) => (
+                      <td key={cell.id}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
       </div>
-      <Card className="border-border/60 bg-card/60 backdrop-blur">
-        <CardHeader>
-          <CardTitle className="text-base">Open opportunities</CardTitle>
-        </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <table className="app-data-table min-w-[900px]">
-            <thead>
-              {table.getHeaderGroups().map((hg) => (
-                <tr key={hg.id}>
-                  {hg.headers.map((h) => (
-                    <th key={h.id}>
-                      {h.isPlaceholder
-                        ? null
-                        : flexRender(h.column.columnDef.header, h.getContext())}
-                    </th>
-                  ))}
-                </tr>
-              ))}
-            </thead>
-            <tbody>
-              {table.getRowModel().rows.map((row) => (
-                <tr key={row.id}>
-                  {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </CardContent>
-      </Card>
-    </div>
+    </OperationalPlanningPageShell>
   );
 }

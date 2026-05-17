@@ -43,6 +43,23 @@
     "retrySync": "Retry sync",
     "signIn": "Sign in"
   },
+  "architectureCleanup": {
+    "badgeTransitional": "Transitional",
+    "badgeDerived": "Derived analytics",
+    "badgeDeprecated": "Deprecated",
+    "badgeReadOnly": "Read-only view",
+    "badgeDemoData": "Demo / roll-forward data",
+    "badgeSampleData": "Sample / demo CRM data",
+    "titleTransitional": "This area is being consolidated",
+    "titleDerived": "Derived layer — not a system of record",
+    "titleDeprecated": "Placeholder until CRM module",
+    "bodyTransitional": "Numbers and workflows here may move to Executive or Companies in a future wave. HR-linked business units and Supabase projection remain canonical.",
+    "bodyDerived": "Simulations, workbook edits, and matrix views inform decisions but do not replace HR structure, service catalog, or planning projection tables.",
+    "bodyDeprecated": "Opportunities are stored in the local workspace for demos only. A future CRM module will own pipeline data.",
+    "notCanonicalFootnote": "Wave 0: visibility only — routes and data paths are unchanged.",
+    "noLinkedUnits": "No HR-linked business units in the planning workspace. Create units in HR Workforce and sync.",
+    "selectLinkedUnit": "Select an HR-linked business unit from the toolbar to continue."
+  },
   "measures": {
     "stripTitle": "Unified measures layer (Phase 1)",
     "stripSubtitle": "Numbers below are computed once and reused — same engine paths as before, now orchestrated for auditability.",

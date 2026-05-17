@@ -39,10 +39,13 @@ import { toCommercialPricingSnapshot } from "@/lib/commercial-pricing-intelligen
 import type { PricingModelId } from "@/lib/commercial-pricing-intelligence/types";
 import { cn } from "@/lib/utils";
 import { SampleDataPanel } from "@/components/sample-data/sample-data-panel";
+import { TransitionalArchitectureBanner } from "@/components/platform-simplification/transitional-architecture-banner";
 import { useOperationalWorkspace } from "@/hooks/use-operational-workspace";
+import { useWave0DevWarnings } from "@/hooks/use-wave0-dev-warnings";
 
 export function CommercialPricingIntelligenceView() {
   const t = useTranslations("serviceArchitecture");
+  useWave0DevWarnings("service-architecture/commercial-pricing");
   const locale = useLocale();
 
   const serviceFamilies = useServiceArchitectureStore((s) => s.serviceFamilies);
@@ -282,6 +285,7 @@ export function CommercialPricingIntelligenceView() {
 
   return (
     <div className="space-y-6">
+      <TransitionalArchitectureBanner variant="derived" />
       <SampleDataPanel moduleId="commercial-pricing-prefs" />
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{t("commercialPricingTitle")}</h1>

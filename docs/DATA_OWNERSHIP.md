@@ -2,7 +2,7 @@
 
 **Status:** Source-of-truth registry per entity  
 **Critical naming decision:** `Organization` (tenant) ≠ `HrBusinessUnit` (operational scope)  
-**Related:** [MULTI_TENANT_ARCHITECTURE.md](./MULTI_TENANT_ARCHITECTURE.md) · [SYSTEM_BOUNDARIES.md](./SYSTEM_BOUNDARIES.md)
+**Related:** [MULTI_TENANT_ARCHITECTURE.md](./MULTI_TENANT_ARCHITECTURE.md) · [SYSTEM_BOUNDARIES.md](./SYSTEM_BOUNDARIES.md) · For full page inventory, redundancy, and cleanup classification see [PLATFORM_ARCHITECTURAL_AUDIT.md](./PLATFORM_ARCHITECTURAL_AUDIT.md).
 
 ---
 

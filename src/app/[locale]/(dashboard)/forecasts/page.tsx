@@ -8,6 +8,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { OperationalPlanningPageShell } from "@/components/platform-simplification/operational-planning-page-shell";
 import { buildDemoForecastSeries } from "@/data/demo-seed";
 import { formatCurrency } from "@/lib/calculations/engine";
 import { buildBuForecastContext } from "@/lib/planning/measures/bu-forecast-context";
@@ -58,55 +59,62 @@ export default function ForecastsPage() {
     getCoreRowModel: getCoreRowModel(),
   });
 
-  if (!company) {
-    return (
-      <div className="mx-auto max-w-6xl p-8 text-center text-sm text-muted-foreground">
-        Select or sync a business unit to view forecasts.
-      </div>
-    );
-  }
-
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Rolling forecasts</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Monthly roll-forward for the active business unit
-          {buContext ? ` (${buContext.companyName})` : ""} using growth and margin targets
-          from workspace settings.
-        </p>
-      </div>
-      <Card className="border-border/60 bg-card/60 backdrop-blur">
-        <CardHeader>
-          <CardTitle className="text-base">{company.name} — 12 month path</CardTitle>
-        </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <table className="app-data-table min-w-[640px]">
-            <thead>
-              {table.getHeaderGroups().map((hg) => (
-                <tr key={hg.id}>
-                  {hg.headers.map((h) => (
-                    <th key={h.id}>
-                      {h.isPlaceholder
-                        ? null
-                        : flexRender(h.column.columnDef.header, h.getContext())}
-                    </th>
+    <OperationalPlanningPageShell
+      routeContext="forecasts"
+      bannerVariant="transitional"
+      readOnly
+      usesDemoData
+    >
+      {!company ? (
+        <div className="mx-auto max-w-6xl p-8 text-center text-sm text-muted-foreground">
+          Select or sync a business unit to view forecasts.
+        </div>
+      ) : (
+        <div className="mx-auto max-w-6xl space-y-6">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight">Rolling forecasts</h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Monthly roll-forward for the active business unit
+              {buContext ? ` (${buContext.companyName})` : ""} using growth and margin targets
+              from workspace settings.
+            </p>
+          </div>
+          <Card className="border-border/60 bg-card/60 backdrop-blur">
+            <CardHeader>
+              <CardTitle className="text-base">{company.name} — 12 month path</CardTitle>
+            </CardHeader>
+            <CardContent className="overflow-x-auto">
+              <table className="app-data-table min-w-[640px]">
+                <thead>
+                  {table.getHeaderGroups().map((hg) => (
+                    <tr key={hg.id}>
+                      {hg.headers.map((h) => (
+                        <th key={h.id}>
+                          {h.isPlaceholder
+                            ? null
+                            : flexRender(h.column.columnDef.header, h.getContext())}
+                        </th>
+                      ))}
+                    </tr>
                   ))}
-                </tr>
-              ))}
-            </thead>
-            <tbody>
-              {table.getRowModel().rows.map((row) => (
-                <tr key={row.id}>
-                  {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
+                </thead>
+                <tbody>
+                  {table.getRowModel().rows.map((row) => (
+                    <tr key={row.id}>
+                      {row.getVisibleCells().map((cell) => (
+                        <td key={cell.id}>
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </td>
+                      ))}
+                    </tr>
                   ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </CardContent>
-      </Card>
-    </div>
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </OperationalPlanningPageShell>
   );
 }
