@@ -110,6 +110,10 @@ function fillValuesFromEngines(input: {
     [MEASURE_ID.PIPELINE_HEALTH]: pipeline.health,
     [MEASURE_ID.PIPELINE_COVERAGE]: pipeline.coverage,
     [MEASURE_ID.FORECAST_ACHIEVEMENT_PROXY]: forecastAchievementVsPlanProxy,
+    [MEASURE_ID.BU_CM_BLENDED_STREAMS]: blendedStreamCmPct,
+    [MEASURE_ID.BU_REVENUE_SCENARIO_MONTHLY]: activeEngine.revenue,
+    [MEASURE_ID.BU_NET_PROFIT_SCENARIO_MONTHLY]: activeEngine.netProfit,
+    [MEASURE_ID.BU_ROI_SCENARIO_ON_FIXED]: activeEngine.roi,
   };
 }
 

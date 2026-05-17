@@ -149,3 +149,30 @@ export function assertOrganizationMembership(
     throw new TenantForbiddenError();
   }
 }
+
+/**
+ * Requires a Supabase Auth session on the route client so RLS sees auth.uid().
+ * Planning projection sync must not rely on dev tenant bypass without a JWT.
+ */
+export async function requireRouteSupabaseSession(): Promise<{
+  supabase: NonNullable<Awaited<ReturnType<typeof createRouteSupabaseClient>>>;
+  userId: string;
+}> {
+  const supabase = await createRouteSupabaseClient();
+  if (!supabase) {
+    throw new TenantAuthError("Supabase is not configured.");
+  }
+
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (error || !user) {
+    throw new TenantAuthError(
+      "Sign in required for planning projection sync (RLS uses your session)."
+    );
+  }
+
+  return { supabase, userId: user.id };
+}

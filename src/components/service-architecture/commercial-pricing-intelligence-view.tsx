@@ -26,7 +26,6 @@ import {
   buildServiceEconomicsEvaluateInput,
 } from "@/lib/service-economics";
 import { useServiceCostCatalogSlice } from "@/hooks/use-service-cost-catalog-slice";
-import { useWorkspaceStore } from "@/stores/use-workspace-store";
 import { getScenarioPresetById } from "@/lib/service-cost-simulation/scenarios";
 import { operationalPricingBasisFromSimulation } from "@/lib/commercial-pricing-intelligence/operational-basis";
 import { runCommercialPricingIntelligence } from "@/lib/commercial-pricing-intelligence/engine";
@@ -40,6 +39,7 @@ import { toCommercialPricingSnapshot } from "@/lib/commercial-pricing-intelligen
 import type { PricingModelId } from "@/lib/commercial-pricing-intelligence/types";
 import { cn } from "@/lib/utils";
 import { SampleDataPanel } from "@/components/sample-data/sample-data-panel";
+import { useOperationalWorkspace } from "@/hooks/use-operational-workspace";
 
 export function CommercialPricingIntelligenceView() {
   const t = useTranslations("serviceArchitecture");
@@ -50,9 +50,18 @@ export function CommercialPricingIntelligenceView() {
   const tiers = useServiceArchitectureStore((s) => s.serviceTiers);
   const templateTiers = useServiceArchitectureStore((s) => s.serviceTemplateTiers);
   const catalog = useServiceCostCatalogSlice();
-  const companies = useWorkspaceStore((s) => s.companies);
-
   const businessUnits = useHrWorkforceStore((s) => s.businessUnits);
+  const { selectedUnit } = useOperationalWorkspace();
+  const scopedCompanies = useMemo(
+    () => (selectedUnit ? [selectedUnit] : []),
+    [selectedUnit]
+  );
+  const scopedBusinessUnitIds = useMemo(
+    () =>
+      selectedUnit?.hrBusinessUnitId ? [selectedUnit.hrBusinessUnitId] : businessUnits.map((b) => b.id),
+    [selectedUnit, businessUnits]
+  );
+
   const departments = useHrWorkforceStore((s) => s.departments);
   const teams = useHrWorkforceStore((s) => s.teams);
   const roles = useHrWorkforceStore((s) => s.roles);
@@ -108,8 +117,8 @@ export function CommercialPricingIntelligenceView() {
       catalog,
       workforce,
       roles,
-      businessUnitIds: businessUnits.map((b) => b.id),
-      companies,
+      businessUnitIds: scopedBusinessUnitIds,
+      companies: scopedCompanies,
       currency: hrGlobalSettings.defaultCurrency,
       assumptions: costAssumptions,
       scenario: costScenario,
@@ -118,8 +127,8 @@ export function CommercialPricingIntelligenceView() {
       catalog,
       workforce,
       roles,
-      businessUnits,
-      companies,
+      scopedBusinessUnitIds,
+      scopedCompanies,
       hrGlobalSettings.defaultCurrency,
       costAssumptions,
       costScenario,

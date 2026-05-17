@@ -16,7 +16,20 @@
 
 **Rule:** APIs must accept `organizationId` for tenancy and `businessUnitId` only where HR/service rules apply. Never overload one ID for both.
 
-**Mapping (target):** `hr_business_units` table with `organization_id` FK — not implemented; today BU lives only in HR Zustand/localStorage.
+**Mapping (target):** `hr_business_units` table with `organization_id` FK — not implemented; today BU lives in HR catalog (client + `hr_workforce_catalog` when dual-write).
+
+### 1.1 BU-centric hierarchy (approved)
+
+| Layer | System of record | Planning projection |
+|-------|------------------|---------------------|
+| **Holding** | `organizations` (tenant name in Settings) | None — not imported per Excel row |
+| **Business unit** | HR `HrBusinessUnit` | Supabase `companies` UUID via `company_hr_unit_links` |
+| **Department** | HR `HrDepartment` | `revenue_streams` with `metadata.hrDepartmentId` |
+| **Service template** | Service catalog (`businessUnitId` → HR BU) | Optional `metadata` on streams |
+
+**Rule:** `companies` is a **stable planning projection** of an HR BU, not a separate legal entity. UI label: “Business unit”; internal FK remains `company_id` until Phase 5 schema gate.
+
+**Deprecated (do not use for HR BUs):** `public.business_units`, `public.portfolios` (001 scaffold, unused in app). `companies.parent_company_id` is unused by HR sync.
 
 ---
 
@@ -96,14 +109,16 @@
 
 ---
 
-### 2.7 Executive workspace (demo)
+### 2.7 Executive workspace (planning projection)
 
 | Entity | Owner | SOA today | Target |
 |--------|-------|-----------|--------|
-| Forecasts, scenarios, pipeline demo | Executive UI | `use-workspace-store` | Facts store + KPI engine |
+| Operational units | Platform economics sync | `companies` + `company_hr_unit_links` ← HR BU | Same UUID anchor; optional API alias `operationalUnits` |
+| Revenue streams, scenarios | Planning | Supabase + `use-workspace-store` | BU-scoped; dept/service metadata required |
+| Forecasts, pipeline (demo) | Executive UI | Workspace store | BU-keyed forecast versions + CRM (future) |
 | Opportunities (demo) | Executive UI | Workspace store | CRM module (future) |
 
-**Explicit:** Demo data is **not** organizational truth for SaaS.
+**Rule:** Every active HR BU must have a linked planning company (`hrBusinessUnitId` on client). Orphan companies (no HR link) are quarantined, not used for new writes.
 
 ---
 
@@ -180,13 +195,18 @@ See [PERMISSION_ARCHITECTURE.md](./PERMISSION_ARCHITECTURE.md).
 
 ---
 
-## 6. Stakeholder decisions required
+## 6. Stakeholder decisions (BU-centric correction — recorded)
 
-1. **Table naming:** `hr_business_units` vs `business_units` with `type` column.  
-2. **Migration:** Big-bang import vs dual-write period for existing demo keys.  
-3. **Dev mode:** Global bypass flag vs per-dev synthetic org.
+| # | Decision | Resolution |
+|---|----------|------------|
+| 1 | Holding vs BU vs `companies` | **Holding** = `organizations`. **BU** = HR `HrBusinessUnit`. **`companies`** = planning projection (keep UUID FK). |
+| 2 | `public.business_units` / `portfolios` | **Deprecated** — do not map HR BUs here; drop only in Phase 5 after audit. |
+| 3 | Excel Holding column | **Validation-only** against active tenant name; not persisted. |
+| 4 | Migration from planning companies | **Dual-write + sync** — no destructive rename in Phases 1–3; optional `operational_kind` metadata (009). |
+| 5 | `hr_business_units` table | Deferred; HR catalog JSON remains SOA until server table lands. |
+| 6 | Dev mode | Existing `DEV_TENANT_ID` / demo org unchanged. |
 
-Record decisions in [IMPLEMENTATION_PHASES.md](./IMPLEMENTATION_PHASES.md) when made.
+See [IMPLEMENTATION_PHASES.md](./IMPLEMENTATION_PHASES.md) § BU-centric correction track.
 
 ---
 

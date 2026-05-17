@@ -5,7 +5,8 @@ import {
   mergeOpportunityTiersWithDefaults,
   suggestedAdvFromTierBand,
 } from "@/data/opportunity-tiers-defaults";
-import { DEMO_ORG_ID } from "@/data/demo-seed";
+import { getActiveOrganizationId } from "@/lib/persistence/active-tenant";
+import { isLinkedOperationalUnit } from "@/lib/platform-economics/operational-unit";
 import { buildSalesPlanModel } from "@/lib/sales-plan/build-model";
 import { sumMonthlyFixedCosts, weightedBlendedCm } from "@/lib/sales-plan/engine";
 import { useWorkspaceStore } from "@/stores/use-workspace-store";
@@ -153,7 +154,9 @@ interface SalesPlanWizardState {
   normalizeAllTierMixes: () => void;
   normalizeTierMixForService: (serviceId: string) => void;
   applyPlanToWorkspace: () => void;
-  /** Creates a new workspace company + streams + scenario from the wizard; returns false if validation fails. */
+  /** Merges wizard into the selected HR-linked business unit; returns false if validation fails. */
+  savePlanToSelectedOperationalUnit: () => boolean;
+  /** @deprecated Use savePlanToSelectedOperationalUnit */
   savePlanToWorkspaceAsNewCompany: () => boolean;
   hydrateOpportunityTiersFromWorkspaceCompany: () => void;
   setShowAdvancedEnterpriseUi: (v: boolean) => void;
@@ -186,6 +189,7 @@ function buildInitial(): Omit<
   | "normalizeAllTierMixes"
   | "normalizeTierMixForService"
   | "applyPlanToWorkspace"
+  | "savePlanToSelectedOperationalUnit"
   | "savePlanToWorkspaceAsNewCompany"
   | "hydrateOpportunityTiersFromWorkspaceCompany"
   | "setShowAdvancedEnterpriseUi"
@@ -401,10 +405,15 @@ export const useSalesPlanWizardStore = create<SalesPlanWizardState>()(
           opportunityTiers: w.opportunityTiers.map((t) => ({ ...t })),
         });
       },
-      savePlanToWorkspaceAsNewCompany: () => {
+      savePlanToSelectedOperationalUnit: () => {
         const w = get();
-        const portfolio = w.meta.portfolioName?.trim();
-        if (!portfolio || w.products.length === 0) return false;
+        if (!w.meta.portfolioName?.trim() || w.products.length === 0) return false;
+
+        const ws = useWorkspaceStore.getState();
+        const company =
+          ws.companies.find((c) => c.id === ws.selectedCompanyId && isLinkedOperationalUnit(c)) ??
+          ws.companies.find((c) => isLinkedOperationalUnit(c));
+        if (!company?.hrBusinessUnitId) return false;
 
         const totalFixed = sumMonthlyFixedCosts(w.fixedCostLines);
         const serviceWeights = w.products.map((p) => ({
@@ -436,10 +445,7 @@ export const useSalesPlanWizardStore = create<SalesPlanWizardState>()(
         }
         let blended = w.blendedCmOverride;
         if (blended == null) {
-          blended = weightedBlendedCm({
-            serviceWeights,
-            cells: engineCells,
-          });
+          blended = weightedBlendedCm({ serviceWeights, cells: engineCells });
         }
 
         const model = buildSalesPlanModel({
@@ -456,31 +462,8 @@ export const useSalesPlanWizardStore = create<SalesPlanWizardState>()(
         });
 
         const revenueMonthly = Math.max(10_000, model.annualRevenueSar / 12);
-
-        const slug = portfolio
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/^-|-$/g, "")
-          .slice(0, 28);
-        let companyId = `co-sp-${slug || "plan"}`;
-        const ws0 = useWorkspaceStore.getState();
-        while (ws0.companies.some((c) => c.id === companyId)) {
-          companyId = `${companyId}-${Math.random().toString(36).slice(2, 6)}`;
-        }
-
-        const company: DemoCompany = {
-          id: companyId,
-          name: portfolio,
-          organizationId: DEMO_ORG_ID,
-          fixedCostsMonthly: totalFixed,
-          growthTargetPct: 0.18,
-          marginTargetPct: blended,
-          npTargetPct: w.npTargetPct,
-          revenueMonthly,
-          contributionMarginPct: blended,
-          marketSegments: ["Enterprise", "Mid-market", "Public sector"],
-          opportunityTiers: w.opportunityTiers.map((t) => ({ ...t })),
-        };
+        const existingStreams = ws.streams.filter((s) => s.companyId === company.id);
+        const streamById = new Map(existingStreams.map((s) => [s.id, s]));
 
         const rawStreams: DemoRevenueStream[] = w.products.map((p) => {
           const active = TIER_KEYS.filter((tk) => w.contributionCells[`${p.id}:${tk}`]?.exists);
@@ -499,10 +482,14 @@ export const useSalesPlanWizardStore = create<SalesPlanWizardState>()(
           }
           const firstTk = active[0];
           const cell0 = firstTk ? w.contributionCells[`${p.id}:${firstTk}`] : null;
+          const prev = streamById.get(p.id);
           return {
-            id: `rs-${companyId}-${p.id}`,
-            companyId,
+            id: prev?.id ?? p.id,
+            companyId: company.id,
             name: p.name,
+            hrDepartmentId: prev?.hrDepartmentId ?? null,
+            serviceTemplateId: prev?.serviceTemplateId ?? null,
+            serviceFamilyId: prev?.serviceFamilyId ?? null,
             contributionMarginPct: Math.min(0.99, Math.max(0.05, cm)),
             revenueWeight: Math.max(0.01, w.serviceRevenueShare[p.id] ?? 1 / w.products.length),
             avgDealSize: cell0 ? cell0.avgDealValueSar : 200_000,
@@ -517,25 +504,25 @@ export const useSalesPlanWizardStore = create<SalesPlanWizardState>()(
           revenueWeight: s.revenueWeight / wsum,
         }));
 
-        const scenId = `sc-${companyId}-saved`;
-        const scenarios: DemoScenario[] = [
-          {
-            id: scenId,
-            companyId,
-            name: w.meta.planningScenarioName?.trim() || "Saved plan",
-            baseline: true,
+        return useWorkspaceStore.getState().applySalesPlanToOperationalUnit({
+          companyId: company.id,
+          companyPatch: {
+            organizationId: company.organizationId || getActiveOrganizationId() || company.organizationId,
+            fixedCostsMonthly: totalFixed,
+            marginTargetPct: blended,
             npTargetPct: w.npTargetPct,
-            revenueMixAdj: 0,
-            conversionRateAdj: 0,
-            fixedCostAdj: 0,
-            growthAdj: 0,
-            pipelineWeightAdj: 0,
+            revenueMonthly,
+            contributionMarginPct: blended,
+            opportunityTiers: w.opportunityTiers.map((t) => ({ ...t })),
           },
-        ];
-
-        useWorkspaceStore.getState().appendSalesPlanSnapshot({ company, streams, scenarios });
-        return true;
+          streams,
+          scenarioPatch: {
+            name: w.meta.planningScenarioName?.trim() || "Saved plan",
+            npTargetPct: w.npTargetPct,
+          },
+        });
       },
+      savePlanToWorkspaceAsNewCompany: () => get().savePlanToSelectedOperationalUnit(),
     }),
     {
       name: "efp-sales-plan-wizard",

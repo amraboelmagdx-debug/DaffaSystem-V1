@@ -10,6 +10,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buildDemoForecastSeries } from "@/data/demo-seed";
 import { formatCurrency } from "@/lib/calculations/engine";
+import { buildBuForecastContext } from "@/lib/planning/measures/bu-forecast-context";
+import { activeOperationalUnits } from "@/lib/platform-economics/operational-unit";
 import { useWorkspaceStore } from "@/stores/use-workspace-store";
 
 type Row = ReturnType<typeof buildDemoForecastSeries>[number];
@@ -17,9 +19,19 @@ type Row = ReturnType<typeof buildDemoForecastSeries>[number];
 const columnHelper = createColumnHelper<Row>();
 
 export default function ForecastsPage() {
-  const { companies, selectedCompanyId } = useWorkspaceStore();
-  const company = companies.find((c) => c.id === selectedCompanyId) ?? companies[0];
-  const data = useMemo(() => buildDemoForecastSeries(company), [company]);
+  const { companies, selectedCompanyId, selectedScenarioId } = useWorkspaceStore();
+  const linked = activeOperationalUnits(companies);
+  const company =
+    linked.find((c) => c.id === selectedCompanyId) ?? linked[0] ?? companies[0];
+  const buContext = useMemo(
+    () => (company ? buildBuForecastContext(company, selectedScenarioId || null) : null),
+    [company, selectedScenarioId]
+  );
+
+  const data = useMemo(
+    () => (company ? buildDemoForecastSeries(company) : []),
+    [company]
+  );
 
   const columns = useMemo(
     () => [
@@ -46,13 +58,22 @@ export default function ForecastsPage() {
     getCoreRowModel: getCoreRowModel(),
   });
 
+  if (!company) {
+    return (
+      <div className="mx-auto max-w-6xl p-8 text-center text-sm text-muted-foreground">
+        Select or sync a business unit to view forecasts.
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
         <h1 className="text-3xl font-semibold tracking-tight">Rolling forecasts</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Monthly, quarterly, and yearly views roll forward with growth and margin
-          targets from company settings.
+          Monthly roll-forward for the active business unit
+          {buContext ? ` (${buContext.companyName})` : ""} using growth and margin targets
+          from workspace settings.
         </p>
       </div>
       <Card className="border-border/60 bg-card/60 backdrop-blur">

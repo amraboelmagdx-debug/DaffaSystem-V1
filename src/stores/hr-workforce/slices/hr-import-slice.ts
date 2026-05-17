@@ -16,6 +16,7 @@ export const IMPORT_SESSION_INITIAL = {
   importSessionPlan: null as ImportPlanResult | null,
   importSessionLastDryRunAt: null as string | null,
   importSessionReplaceExisting: true,
+  importSessionTenantOrganizationName: null as string | null,
 };
 
 export function getImportSliceResetPayload(): Pick<
@@ -110,7 +111,10 @@ export const createHrImportSlice: StateCreator<HrWorkforceState, [], [], HrImpor
       },
       s.importSessionRows,
       s.importSessionColumnMap,
-      { replaceExisting: replace }
+      {
+        replaceExisting: replace,
+        tenantOrganizationName: s.importSessionTenantOrganizationName,
+      }
     );
     const t = new Date().toISOString();
     if (!result.ok) {

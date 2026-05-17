@@ -37,7 +37,10 @@ import {
   yearlyBurnFromMonthly,
 } from "@/lib/sales-plan/engine";
 import { cn } from "@/lib/utils";
-import { streamsForCompany, useWorkspaceStore } from "@/stores/use-workspace-store";
+import { OperationalBuToolbar } from "@/components/operational-workspace/operational-bu-toolbar";
+import { OperationalWorkspaceGate } from "@/components/operational-workspace/operational-workspace-gate";
+import { useOperationalWorkspace } from "@/hooks/use-operational-workspace";
+import { streamsForCompany } from "@/stores/use-workspace-store";
 import { useSalesPlanWizardStore } from "@/stores/use-sales-plan-wizard-store";
 import type { OpportunityTierKey } from "@/types/sales-plan";
 
@@ -75,8 +78,8 @@ export function SalesPlanWizard() {
   const fmt = (n: number, currency?: string) =>
     formatCurrencyLocale(n, locale, currency ?? "SAR");
 
-  const { selectedCompanyId, companies } = useWorkspaceStore();
-  const company = companies.find((c) => c.id === selectedCompanyId) ?? companies[0] ?? null;
+  const { selectedUnit, isReady } = useOperationalWorkspace();
+  const company = selectedUnit;
   const demoStreams = company ? streamsForCompany(company.id) : [];
 
   const wizard = useSalesPlanWizardStore();
@@ -85,6 +88,8 @@ export function SalesPlanWizard() {
   const hydrateOpportunityTiersFromWorkspaceCompany = useSalesPlanWizardStore(
     (s) => s.hydrateOpportunityTiersFromWorkspaceCompany
   );
+  const seedProductsFromStreams = useSalesPlanWizardStore((s) => s.seedProductsFromStreams);
+  const wizardProducts = useSalesPlanWizardStore((s) => s.products);
   const lastHydratedCompanyId = useRef<string | null>(null);
 
   useEffect(() => {
@@ -93,6 +98,12 @@ export function SalesPlanWizard() {
     lastHydratedCompanyId.current = company.id;
     hydrateOpportunityTiersFromWorkspaceCompany();
   }, [company?.id, hydrateOpportunityTiersFromWorkspaceCompany]);
+
+  useEffect(() => {
+    if (!company?.id || demoStreams.length === 0) return;
+    if (wizardProducts.length > 0) return;
+    seedProductsFromStreams(demoStreams.map((s) => ({ id: s.id, name: s.name })));
+  }, [company?.id, demoStreams, wizardProducts.length, seedProductsFromStreams]);
 
   const totalFixed = useMemo(
     () => sumMonthlyFixedCosts(wizard.fixedCostLines),
@@ -186,16 +197,23 @@ export function SalesPlanWizard() {
 
   const go = (d: number) => wizard.setStep(wizard.currentStep + d);
 
+  if (!isReady) {
+    return <OperationalWorkspaceGate>{null}</OperationalWorkspaceGate>;
+  }
+
   if (!company) {
     return (
-      <div className="mx-auto max-w-2xl rounded-xl border border-amber-500/30 bg-amber-500/5 p-8 text-center">
-        <p className="text-sm font-medium text-foreground">{t("noWorkspaceCompany")}</p>
-        <p className="mt-2 text-xs text-muted-foreground">{t("noWorkspaceCompanyHint")}</p>
-      </div>
+      <OperationalWorkspaceGate>
+        <div className="mx-auto max-w-2xl rounded-xl border border-amber-500/30 bg-amber-500/5 p-8 text-center">
+          <p className="text-sm font-medium text-foreground">{t("noWorkspaceCompany")}</p>
+          <p className="mt-2 text-xs text-muted-foreground">{t("noWorkspaceCompanyHint")}</p>
+        </div>
+      </OperationalWorkspaceGate>
     );
   }
 
   return (
+    <OperationalWorkspaceGate>
     <div className="mx-auto max-w-6xl space-y-6 pb-28">
       <section
         className={cn(
@@ -220,6 +238,7 @@ export function SalesPlanWizard() {
             </p>
           </header>
           <div className="w-full shrink-0 space-y-3 border-t border-border/50 pt-6 lg:w-auto lg:max-w-md lg:border-s lg:border-t-0 lg:ps-8 lg:pt-0">
+            <OperationalBuToolbar className="lg:items-end" selectClassName="lg:ms-auto" />
             <div className="flex flex-wrap items-center gap-2 lg:justify-end">
               <div className="flex items-center gap-1.5 rounded-md border border-violet-500/20 bg-violet-500/5 px-2 py-1">
                 <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
@@ -1490,5 +1509,6 @@ export function SalesPlanWizard() {
         </div>
       </div>
     </div>
+    </OperationalWorkspaceGate>
   );
 }

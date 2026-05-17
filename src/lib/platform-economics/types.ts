@@ -30,6 +30,7 @@ export type EconomicsSyncResult = {
   companiesUpserted: number;
   linksUpserted: number;
   streamsCreated: number;
+  streamsUpdated: number;
   scenariosCreated: number;
   companiesRetired: number;
   errors: string[];
@@ -38,6 +39,20 @@ export type EconomicsSyncResult = {
 export type PlanningWorkspaceClientModel = {
   organizationId: string;
   organizationName: string | null;
+  /** HR-linked business units (planning projection). Same rows as `companies`. */
+  operationalUnits: Array<{
+    id: string;
+    name: string;
+    hrBusinessUnitId: string | null;
+    fixedCostsMonthly: number;
+    growthTargetPct: number;
+    marginTargetPct: number;
+    npTargetPct: number;
+    revenueMonthly: number;
+    contributionMarginPct: number;
+    marketSegments: string[];
+    hrRetired?: boolean;
+  }>;
   companies: Array<{
     id: string;
     name: string;

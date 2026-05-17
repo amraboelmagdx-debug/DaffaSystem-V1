@@ -8,7 +8,7 @@
 
 | Item | Status |
 |------|--------|
-| SQL migrations | `supabase/migrations/001`–`006` (includes `005` HR catalog + `006` write RLS) |
+| SQL migrations | `supabase/migrations/001`–`012` (see migration table below) |
 | CLI config | `supabase/config.toml` (from `npx supabase init`) |
 | Dev seed | `supabase/seed.sql` — dev org, user, membership |
 | App Supabase clients | `src/lib/supabase/{client,route-handler}.ts` |
@@ -45,7 +45,7 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 .\scripts\setup-local-supabase.ps1
 ```
 
-This runs `supabase start`, `supabase db reset` (migrations **001–006** + seed), and writes `.env.local`.
+This runs `supabase start`, `supabase db reset` (migrations **001–012** + seed), and writes `.env.local`.
 
 ### Step C — Manual alternative
 
@@ -96,7 +96,63 @@ npm run supabase:status  # URLs and keys
 
 ---
 
-## 7. Verify RLS is enabled
+## 7. Migration inventory (operational graph)
+
+Apply in order via `npx supabase db reset` (local) or `npx supabase db push` (linked remote):
+
+| Version | File | Purpose |
+|---------|------|---------|
+| 001 | `001_initial_schema.sql` | Core org, companies, `organization_members`, base RLS |
+| 002 | `002_planning_engine.sql` | Planning matrix, stream/scenario RLS |
+| 003 | `003_revenue_stream_deal_tiers.sql` | Deal tier lines |
+| 004 | `004_hr_workforce_planning.sql` | Legacy normalized HR (unused by sync) |
+| 005 | `005_hr_workforce_catalog.sql` | `hr_workforce_catalog` |
+| 006 | `006_hr_workforce_catalog_write_rls.sql` | HR catalog writes |
+| **007** | **`007_company_hr_unit_links.sql`** | **`company_hr_unit_links`** (HR BU → planning company) |
+| 008 | `008_service_architecture_catalog.sql` | Service architecture catalog |
+| 009 | `009_bu_operational_metadata.sql` | BU metadata comments |
+| 010 | `010_deal_economics_runs.sql` | Deal economics run snapshots |
+| **011** | **`011_rls_membership_helper.sql`** | **`is_organization_member()`** — fixes RLS recursion |
+| **012** | **`012_planning_projection_rls.sql`** | Member-scoped **`companies`** INSERT/UPDATE; `is_company_accessible()` for planning children |
+
+If sync fails with `Could not find table public.company_hr_unit_links`, migrations **007+** were never applied on that database.
+
+If sync fails with `new row violates row-level security policy for table "companies"`, migration **012** is missing or the request has no auth session (see §9).
+
+### RLS recursion fix (011)
+
+Migration **001** defined `org_members_self_read` on `organization_members` with a subquery on the same table, causing:
+
+`infinite recursion detected in policy for relation "organization_members"`
+
+**011** adds `public.is_organization_member(user_id, org_id)` (`SECURITY DEFINER`, same pattern as `has_org_role`) and replaces that policy.
+
+### Planning projection writes (012)
+
+Migration **001** gated `companies` INSERT/UPDATE on planner roles (`admin` … `analyst`, excluding `viewer`) while HR catalog and child planning tables allowed any org member. Economics sync (`POST /api/platform/economics/sync`) uses the **route client + JWT**; **012** aligns `companies` and planning children with `is_organization_member` / `is_company_accessible`.
+
+| Capability | RLS |
+|------------|-----|
+| Read planning projection | Any org member |
+| Insert/update companies, streams, scenarios (sync + app) | Any org member |
+| HR catalog without login | Dev service-role only (bypasses RLS) |
+| Economics sync without login | **401** — sign in at `/en/login` |
+
+Verify after reset:
+
+```sql
+select version from supabase_migrations.schema_migrations order by version;
+select to_regclass('public.company_hr_unit_links');
+select policyname from pg_policies where tablename = 'organization_members';
+-- expect org_members_select (not org_members_self_read)
+
+select policyname, cmd from pg_policies where tablename = 'companies';
+-- expect companies_select_member, companies_insert_member, companies_update_member
+```
+
+---
+
+## 8. Verify RLS is enabled
 
 In Supabase Studio → SQL, or `psql`:
 
@@ -119,7 +175,7 @@ Expect: `hr_workforce_catalog_select_member`, `insert_member`, `update_member`.
 
 ---
 
-## 8. Dev auth (RLS on API with real JWT)
+## 9. Dev auth (RLS on API with real JWT)
 
 | Field | Value |
 |-------|--------|
@@ -131,8 +187,22 @@ Sign in at `/en/login`. PUT/GET then use the **anon key + session cookie** (RLS 
 
 Without login, dev tenant bypass + **service role** (local only) allows catalog I/O for ergonomics; that path **bypasses RLS**.
 
+**Planning sync** (`POST /api/platform/economics/sync`) always requires a real session so `auth.uid()` satisfies RLS on `companies` and related tables.
+
+With Supabase + `dual_write`, middleware redirects unauthenticated users to `/en/login` (or set `NEXT_PUBLIC_REQUIRE_AUTH=true`). Local setup script sets `NEXT_PUBLIC_REQUIRE_AUTH=true` by default.
+
+If bootstrap shows a sync error instead of redirecting, use **Sign in** on the gate or open `/en/login` directly (`dev@local.test` / `devpassword123` after `db reset`).
+
 ---
 
-## 9. Manual persistence verification
+## 10. Manual persistence verification
 
 See [PHASE_2_2_IMPLEMENTATION_NOTES.md](./PHASE_2_2_IMPLEMENTATION_NOTES.md) §9 and § inspect rows below.
+
+Operational graph (HR BU → planning workspace):
+
+```bash
+npm run verify:operational-graph
+```
+
+Checks `company_hr_unit_links`, `is_organization_member()`, `companies` RLS policies (012), and optionally authenticated `POST /api/platform/economics/sync` + `GET /api/planning/workspace` when the dev server is running.

@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
 import { useTranslations } from "next-intl";
+import { useTenantPersistenceContext } from "@/components/providers/tenant-persistence-context";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -18,13 +20,14 @@ import {
   type ImportColumnKey,
   IMPORT_COLUMN_LABELS,
 } from "@/lib/hr-workforce/import-parser";
-import { syncEconomicsGraphFromHr } from "@/lib/platform-economics/client-sync";
+import { bootstrapOperationalWorkspaceFromHr } from "@/lib/platform-economics/bootstrap-operational-workspace";
 import { flushHrCatalogSync } from "@/lib/persistence/hr-catalog-dual-write";
 import { writeHrCatalogLocalPersistSnapshot } from "@/lib/persistence/hr-catalog-local-persist";
 import { getActiveOrganizationId } from "@/lib/persistence/active-tenant";
 import { useHrWorkforceStore } from "@/stores/use-hr-workforce-store";
 
 const COLUMN_KEYS: ImportColumnKey[] = [
+  "holding",
   "businessUnit",
   "department",
   "team",
@@ -42,6 +45,11 @@ const COLUMN_KEYS: ImportColumnKey[] = [
 
 export function HrWorkforceImportView() {
   const t = useTranslations("hrWorkforce");
+  const { organizationName } = useTenantPersistenceContext();
+
+  useEffect(() => {
+    useHrWorkforceStore.setState({ importSessionTenantOrganizationName: organizationName });
+  }, [organizationName]);
   const applyImportDeltas = useHrWorkforceStore((s) => s.applyImportDeltas);
   const pushImportLog = useHrWorkforceStore((s) => s.pushImportLog);
   const importSessionLoadParsed = useHrWorkforceStore((s) => s.importSessionLoadParsed);
@@ -90,11 +98,7 @@ export function HrWorkforceImportView() {
       } catch {
         /* store already updated; persist bar shows sync retry */
       }
-      try {
-        await syncEconomicsGraphFromHr();
-      } catch {
-        /* planning sync retried on next tenant hydrate */
-      }
+      await bootstrapOperationalWorkspaceFromHr(orgId);
     }
     pushImportLog({
       fileName,

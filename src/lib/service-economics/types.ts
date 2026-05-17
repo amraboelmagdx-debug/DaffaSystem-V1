@@ -18,14 +18,19 @@ export const SERVICE_ECONOMICS_MEASURE_KEYS = {
   contributionMarginPct: "serviceEconomics.contributionMarginPct",
 } as const;
 
+/** Authoritative AI / deal economics graph root — always BU-scoped. */
 export type ServiceEconomicsGraphContext = {
   organizationId?: string;
+  /** Derived planning projection UUID for executive rollup (optional). */
   companyId?: string;
   hrBusinessUnitId: string;
   serviceFamilyId?: string;
   templateId: string;
   tierId: string;
   currency: string;
+  /** Optional deal / planning lineage */
+  revenueStreamId?: string | null;
+  dealId?: string | null;
 };
 
 export type ServiceEconomicsLineage = {

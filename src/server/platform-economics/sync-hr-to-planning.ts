@@ -24,6 +24,7 @@ export async function syncHrCatalogToPlanningWorkspace(
       companiesUpserted: 0,
       linksUpserted: 0,
       streamsCreated: 0,
+      streamsUpdated: 0,
       scenariosCreated: 0,
       companiesRetired: 0,
       errors: ["Supabase is not configured."],
@@ -41,6 +42,7 @@ export async function syncHrCatalogToPlanningWorkspace(
       companiesUpserted: 0,
       linksUpserted: 0,
       streamsCreated: 0,
+      streamsUpdated: 0,
       scenariosCreated: 0,
       companiesRetired: 0,
       errors: ["HR catalog missing or invalid."],
@@ -72,6 +74,7 @@ export async function syncHrCatalogToPlanningWorkspace(
   let companiesUpserted = 0;
   let linksUpserted = 0;
   let streamsCreated = 0;
+  let streamsUpdated = 0;
   let scenariosCreated = 0;
 
   for (const bu of activeBus) {
@@ -89,6 +92,7 @@ export async function syncHrCatalogToPlanningWorkspace(
     const meta = {
       syncSource: ECONOMICS_SYNC_SOURCE,
       syncVersion: ECONOMICS_SYNC_VERSION,
+      operationalKind: "hr_business_unit" as const,
       hrBusinessUnitId: bu.id,
       hrRetiredAt: null as string | null,
     };
@@ -162,7 +166,19 @@ export async function syncHrCatalogToPlanningWorkspace(
 
     const n = Math.max(depts.length, 1);
     for (const dept of depts) {
-      if (streamByDeptId.has(dept.id)) continue;
+      const existingStreamId = streamByDeptId.get(dept.id);
+      if (existingStreamId) {
+        const existing = (existingStreams ?? []).find((s) => s.id === existingStreamId);
+        if (existing && String(existing.name ?? "") !== dept.name) {
+          const { error: renameErr } = await supabase
+            .from("revenue_streams")
+            .update({ name: dept.name })
+            .eq("id", existingStreamId);
+          if (renameErr) errors.push(renameErr.message);
+          else streamsUpdated += 1;
+        }
+        continue;
+      }
       const weight = 1 / n;
       const { error: stErr } = await supabase.from("revenue_streams").insert({
         company_id: companyId,
@@ -233,6 +249,7 @@ export async function syncHrCatalogToPlanningWorkspace(
     companiesUpserted,
     linksUpserted,
     streamsCreated,
+    streamsUpdated,
     scenariosCreated,
     companiesRetired,
     errors,

@@ -16,6 +16,10 @@ export type OpportunityStage =
   | "closed_won"
   | "closed_lost";
 
+/**
+ * Planning projection of an HR Business Unit (Supabase `companies` row).
+ * UI label: Business unit. Prefer {@link OperationalUnit} in new code.
+ */
 export interface DemoCompany {
   id: string;
   name: string;
@@ -35,6 +39,9 @@ export interface DemoCompany {
    */
   opportunityTiers?: OpportunityTierDefinition[];
 }
+
+/** Alias: canonical operational entity in the BU-centric model. */
+export type OperationalUnit = DemoCompany;
 
 export interface DemoRevenueStream {
   id: string;

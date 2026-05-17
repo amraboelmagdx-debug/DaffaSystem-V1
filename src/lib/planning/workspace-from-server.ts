@@ -1,6 +1,7 @@
 import type { PlanningWorkspaceDTO } from "@/server/planning/workspace";
 import type { DemoCompany, DemoOpportunity, DemoRevenueStream, DemoScenario } from "@/types/domain";
 import type { OpportunityStage } from "@/types/domain";
+import { partitionOperationalUnits } from "@/lib/platform-economics/operational-unit";
 import type { PlanningWorkspaceClientModel } from "@/lib/platform-economics/types";
 
 function metaField(meta: unknown, key: string): string | undefined {
@@ -98,6 +99,18 @@ export function mapPlanningDtoToClientModel(
   return {
     organizationId,
     organizationName: dto.organization?.name ?? null,
+    operationalUnits: companies.map((c) => ({
+      id: c.id,
+      name: c.name,
+      hrBusinessUnitId: c.hrBusinessUnitId ?? null,
+      fixedCostsMonthly: c.fixedCostsMonthly,
+      growthTargetPct: c.growthTargetPct,
+      marginTargetPct: c.marginTargetPct,
+      npTargetPct: c.npTargetPct,
+      revenueMonthly: c.revenueMonthly,
+      contributionMarginPct: c.contributionMarginPct,
+      marketSegments: c.marketSegments,
+    })),
     companies,
     streams,
     scenarios,
@@ -113,11 +126,18 @@ export function applyPlanningClientModelToWorkspaceState(model: PlanningWorkspac
   selectedCompanyId: string;
   selectedScenarioId: string;
 } {
-  const companies = model.companies.map((c) => ({ ...c }));
-  const streams: DemoRevenueStream[] = model.streams.map((s) => ({ ...s }));
-  const scenarios = model.scenarios.map((s) => ({ ...s }));
-  const opportunities = model.opportunities.map((o) => ({ ...o }));
-  const selectedCompanyId = companies[0]?.id ?? "";
+  const { linked, orphans } = partitionOperationalUnits(model.companies);
+  const companies = [...linked.map((c) => ({ ...c })), ...orphans.map((c) => ({ ...c }))];
+  const streams: DemoRevenueStream[] = model.streams
+    .filter((s) => companies.some((c) => c.id === s.companyId))
+    .map((s) => ({ ...s }));
+  const scenarios = model.scenarios
+    .filter((sc) => companies.some((c) => c.id === sc.companyId))
+    .map((s) => ({ ...s }));
+  const opportunities = model.opportunities
+    .filter((o) => companies.some((c) => c.id === o.companyId))
+    .map((o) => ({ ...o }));
+  const selectedCompanyId = linked[0]?.id ?? companies[0]?.id ?? "";
   const scenariosForCo = scenarios.filter((s) => s.companyId === selectedCompanyId);
   const selectedScenarioId = scenariosForCo[0]?.id ?? scenarios[0]?.id ?? "";
   return {

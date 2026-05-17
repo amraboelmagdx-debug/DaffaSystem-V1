@@ -4,9 +4,20 @@ import { useCallback, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useOperationalWorkspace } from "@/hooks/use-operational-workspace";
 import { runSampleDataAction } from "@/lib/sample-data/orchestrator";
 import type { SampleDataAction, SampleDataModuleId } from "@/lib/sample-data/types";
 import { SAMPLE_PACK_ID } from "@/lib/sample-data/types";
+
+function isExplicitSampleDataEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_ENABLE_SAMPLE_DATA === "true";
+}
+
+const MODULES_HIDDEN_WHEN_LINKED: SampleDataModuleId[] = [
+  "workspace",
+  "service-architecture",
+  "sales-plan-wizard",
+];
 
 const MODULE_LABEL_KEYS: Record<SampleDataModuleId, string> = {
   "hr-workforce": "hrWorkforce",
@@ -23,6 +34,15 @@ type Props = {
 };
 
 export function SampleDataPanel({ moduleId, className }: Props) {
+  const { linkedUnits } = useOperationalWorkspace();
+  if (
+    MODULES_HIDDEN_WHEN_LINKED.includes(moduleId) &&
+    linkedUnits.length > 0 &&
+    !isExplicitSampleDataEnabled()
+  ) {
+    return null;
+  }
+
   const t = useTranslations("sampleData");
   const labelKey = MODULE_LABEL_KEYS[moduleId];
   const [busy, setBusy] = useState<SampleDataAction | null>(null);

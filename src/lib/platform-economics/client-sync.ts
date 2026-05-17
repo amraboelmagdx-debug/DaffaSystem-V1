@@ -1,28 +1,49 @@
 import {
-  applyPlanningClientModelToWorkspaceState,
-  mapPlanningDtoToClientModel,
-} from "@/lib/planning/workspace-from-server";
-import type { PlanningWorkspaceDTO } from "@/server/planning/workspace";
+  bootstrapOperationalWorkspaceFromHr,
+  refreshPlanningWorkspaceFromServer,
+} from "@/lib/platform-economics/bootstrap-operational-workspace";
+import { getActiveOrganizationId } from "@/lib/persistence/active-tenant";
 import type { EconomicsSyncResult } from "@/lib/platform-economics/types";
-import { useWorkspaceStore } from "@/stores/use-workspace-store";
-
-export async function syncEconomicsGraphFromHr(): Promise<EconomicsSyncResult> {
-  const res = await fetch("/api/platform/economics/sync", {
-    method: "POST",
-    credentials: "include",
-  });
-  const body = (await res.json()) as EconomicsSyncResult;
-  if (res.ok) {
-    await refreshPlanningWorkspaceFromServer();
-  }
-  return body;
-}
 
 export type LinkRevenueStreamToServiceInput = {
   streamId: string;
   serviceTemplateId?: string | null;
   serviceFamilyId?: string | null;
 };
+
+/** @deprecated Prefer `bootstrapOperationalWorkspaceFromHr` — kept for stream service-link. */
+export { refreshPlanningWorkspaceFromServer };
+
+export async function syncEconomicsGraphFromHr(): Promise<EconomicsSyncResult> {
+  const orgId = getActiveOrganizationId();
+  if (!orgId) {
+    return {
+      ok: false,
+      organizationId: "",
+      companiesUpserted: 0,
+      linksUpserted: 0,
+      streamsCreated: 0,
+      streamsUpdated: 0,
+      scenariosCreated: 0,
+      companiesRetired: 0,
+      errors: ["No active organization"],
+    };
+  }
+  const result = await bootstrapOperationalWorkspaceFromHr(orgId);
+  return (
+    result.sync ?? {
+      ok: false,
+      organizationId: orgId,
+      companiesUpserted: 0,
+      linksUpserted: 0,
+      streamsCreated: 0,
+      streamsUpdated: 0,
+      scenariosCreated: 0,
+      companiesRetired: 0,
+      errors: result.errors,
+    }
+  );
+}
 
 /** Option A: explicit metadata link from a planning stream to SA catalog (no new streams). */
 export async function linkRevenueStreamToService(
@@ -52,28 +73,4 @@ export async function linkRevenueStreamToService(
 
   await refreshPlanningWorkspaceFromServer();
   return { ok: true };
-}
-
-export async function refreshPlanningWorkspaceFromServer(): Promise<boolean> {
-  const res = await fetch("/api/planning/workspace", { credentials: "include", cache: "no-store" });
-  if (!res.ok) return false;
-  const dto = (await res.json()) as PlanningWorkspaceDTO | { source: "none" };
-  if (dto.source !== "supabase") return false;
-
-  const model = mapPlanningDtoToClientModel(
-    dto.organization?.id ?? "",
-    dto,
-    dto.company_hr_links ?? []
-  );
-  const next = applyPlanningClientModelToWorkspaceState(model);
-  useWorkspaceStore.setState({
-    companies: next.companies,
-    streams: next.streams,
-    scenarios: next.scenarios,
-    opportunities: next.opportunities,
-    selectedCompanyId: next.selectedCompanyId,
-    selectedScenarioId: next.selectedScenarioId,
-    tierLineOverrides: useWorkspaceStore.getState().tierLineOverrides,
-  });
-  return true;
 }

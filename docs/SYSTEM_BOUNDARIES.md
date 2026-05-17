@@ -12,7 +12,19 @@ For each layer, **IS** defines ownership and **IS NOT** prevents scope creep dur
 
 ---
 
-## 2. HR Workforce & economics
+## 2. Planning projection (companies)
+
+| IS | IS NOT |
+|----|--------|
+| UUID anchor for scenarios, streams, forecasts keyed by `company_id` | HR Business Unit master (use HR catalog + `company_hr_unit_links`) |
+| 1:1 mirror of active `HrBusinessUnit` after economics sync | Holding / tenant (`organizations`) |
+| Financial overlays (fixed cost, targets, stream weights) | Service template definitions |
+
+**Deprecated schema (001 scaffold, unused in app):** `public.portfolios`, `public.business_units` (child of `companies`) — do not use for HR BUs. See [DATA_OWNERSHIP.md](./DATA_OWNERSHIP.md) §1.1.
+
+---
+
+## 3. HR Workforce & economics
 
 | IS | IS NOT |
 |----|--------|
@@ -27,7 +39,7 @@ For each layer, **IS** defines ownership and **IS NOT** prevents scope creep dur
 
 ---
 
-## 3. Service Architecture
+## 4. Service Architecture
 
 | IS | IS NOT |
 |----|--------|

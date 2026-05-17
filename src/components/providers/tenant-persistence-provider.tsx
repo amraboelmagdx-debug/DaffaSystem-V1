@@ -40,6 +40,8 @@ import { installHrHydrationDebugGlobal } from "@/lib/persistence/hr-hydration-de
 import { prepareEconomicsStoresForOrganization } from "@/lib/persistence/hydrate-economics-stores";
 import { switchActiveOrganization } from "@/lib/persistence/switch-active-organization";
 import { fetchTenantContextClient } from "@/lib/persistence/tenant-context-client";
+import { bootstrapOperationalWorkspaceFromHr } from "@/lib/platform-economics/bootstrap-operational-workspace";
+import type { OperationalWorkspaceBootstrapResult } from "@/lib/platform-economics/bootstrap-operational-workspace";
 
 function bootstrapActiveOrganizationBeforeChildren(): void {
   if (typeof window === "undefined") return;
@@ -57,6 +59,8 @@ export function TenantPersistenceProvider({ children }: { children: ReactNode })
   const [hrSync, setHrSync] = useState<HrCatalogSyncState>(() => getHrCatalogSyncState());
   const [saHydration, setSaHydration] = useState<ServiceHydrationResult>(SERVICE_HYDRATION_IDLE);
   const [saSync, setSaSync] = useState<ServiceCatalogSyncState>(() => getServiceCatalogSyncState());
+  const [workspaceBootstrap, setWorkspaceBootstrap] =
+    useState<OperationalWorkspaceBootstrapResult | null>(null);
 
   useEffect(() => subscribeHrCatalogSyncState(setHrSync), []);
   useEffect(() => subscribeServiceCatalogSyncState(setSaSync), []);
@@ -95,6 +99,8 @@ export function TenantPersistenceProvider({ children }: { children: ReactNode })
       setOrganizationName(orgName ?? null);
       await finishHrCatalogPersistenceSetup(orgId, result.hr);
       await finishServiceCatalogPersistenceSetup(orgId, result.sa);
+      const bootstrap = await bootstrapOperationalWorkspaceFromHr(orgId);
+      setWorkspaceBootstrap(bootstrap);
     } catch (err) {
       setHrHydration({
         status: "error",
@@ -165,6 +171,8 @@ export function TenantPersistenceProvider({ children }: { children: ReactNode })
           result.activeOrganizationId,
           result.economics.sa
         );
+        const bootstrap = await bootstrapOperationalWorkspaceFromHr(result.activeOrganizationId);
+        setWorkspaceBootstrap(bootstrap);
       } catch (err) {
         setHrHydration({
           status: "error",
@@ -192,6 +200,12 @@ export function TenantPersistenceProvider({ children }: { children: ReactNode })
         hrSync,
         saHydration,
         saSync,
+        workspaceBootstrap,
+        retryWorkspaceBootstrap: async () => {
+          if (!organizationId) return;
+          const bootstrap = await bootstrapOperationalWorkspaceFromHr(organizationId);
+          setWorkspaceBootstrap(bootstrap);
+        },
         switchOrganization,
       }}
     >

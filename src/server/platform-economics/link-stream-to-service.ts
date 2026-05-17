@@ -1,3 +1,5 @@
+import { validateStreamServiceTemplateLink } from "@/lib/deal-economics/validate-integrity";
+import { catalogSliceFromStore } from "@/lib/service-cost-simulation/hr-input";
 import { resolveHrCatalogSupabaseClient } from "@/server/hr/resolve-hr-catalog-supabase";
 import { loadServiceArchitectureCatalog } from "@/server/service/load-service-catalog";
 import type { ServiceArchitectureCatalogPayload } from "@/server/validation/service-catalog-schema";
@@ -55,6 +57,28 @@ async function validateSaRefs(
   return null;
 }
 
+async function resolveStreamHrBusinessUnitId(
+  organizationId: string,
+  companyId: string,
+  streamMetadata: Record<string, unknown>
+): Promise<string | null> {
+  const fromMeta = streamMetadata.hrBusinessUnitId;
+  if (typeof fromMeta === "string" && fromMeta.length > 0) return fromMeta;
+
+  const supabase = await resolveHrCatalogSupabaseClient();
+  if (!supabase) return null;
+
+  const { data: link } = await supabase
+    .from("company_hr_unit_links")
+    .select("hr_business_unit_id")
+    .eq("organization_id", organizationId)
+    .eq("company_id", companyId)
+    .maybeSingle();
+
+  const hrId = link?.hr_business_unit_id;
+  return typeof hrId === "string" && hrId.length > 0 ? hrId : null;
+}
+
 export async function linkRevenueStreamToService(
   input: LinkStreamToServiceInput
 ): Promise<LinkStreamToServiceResult> {
@@ -93,6 +117,32 @@ export async function linkRevenueStreamToService(
   }
 
   const prev = streamMetadata(stream.metadata);
+
+  if (input.serviceTemplateId) {
+    const row = await loadServiceArchitectureCatalog(input.organizationId);
+    const catalogPayload = row ? parseSaPayload(row.payload) : null;
+    if (!catalogPayload) {
+      return {
+        ok: false,
+        status: 422,
+        message: "Service architecture catalog not found for this organization",
+      };
+    }
+    const streamBuId = await resolveStreamHrBusinessUnitId(
+      input.organizationId,
+      stream.company_id as string,
+      prev
+    );
+    const buErr = validateStreamServiceTemplateLink(
+      catalogSliceFromStore(catalogPayload),
+      input.serviceTemplateId,
+      streamBuId
+    );
+    if (buErr) {
+      return { ok: false, status: 422, message: buErr };
+    }
+  }
+
   const metadata: Record<string, unknown> = { ...prev };
 
   if (input.serviceTemplateId === null) {

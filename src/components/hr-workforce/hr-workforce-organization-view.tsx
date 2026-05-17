@@ -23,6 +23,10 @@ import { effectiveOhBillableHeadcount } from "@/lib/hr-workforce/structure-utils
 import { annualAmountNonWorkforceLine } from "@/lib/hr-workforce/oh-numerator";
 import { newHrId } from "@/lib/hr-workforce/id";
 import type { OhNonWorkforceLine, OhManualSettings } from "@/types/hr-workforce";
+import {
+  requestHrPlanningSyncDebounced,
+  requestHrPlanningSyncNow,
+} from "@/lib/platform-economics/request-hr-planning-sync";
 import { useHrWorkforceStore } from "@/stores/use-hr-workforce-store";
 
 const OH_COMPONENT_CATEGORIES = ["General", "Facilities", "IT", "Professional", "G&A", "Other"] as const;
@@ -184,9 +188,19 @@ export function HrWorkforceOrganizationView() {
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">{t("secBusinessUnits")}</CardTitle>
-              <CardDescription>{t("secBusinessUnitsDesc")}</CardDescription>
+            <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-2 space-y-0">
+              <div>
+                <CardTitle className="text-base">{t("secBusinessUnits")}</CardTitle>
+                <CardDescription>{t("secBusinessUnitsDesc")}</CardDescription>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void requestHrPlanningSyncNow()}
+              >
+                {t("syncPlanningFromHr")}
+              </Button>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex flex-wrap gap-2">
@@ -197,6 +211,7 @@ export function HrWorkforceOrganizationView() {
                   onClick={() => {
                     addBusinessUnit({ name: buName });
                     setBuName("");
+                    requestHrPlanningSyncDebounced();
                   }}
                 >
                   {t("addBU")}
@@ -234,7 +249,10 @@ export function HrWorkforceOrganizationView() {
                           <input
                             type="checkbox"
                             checked={u.isActive}
-                            onChange={(e) => updateBusinessUnit(u.id, { isActive: e.target.checked })}
+                            onChange={(e) => {
+                              updateBusinessUnit(u.id, { isActive: e.target.checked });
+                              requestHrPlanningSyncDebounced();
+                            }}
                           />
                         </div>
                       </td>
@@ -252,6 +270,7 @@ export function HrWorkforceOrganizationView() {
                               if (businessUnits.length <= 1) return;
                               if (typeof globalThis !== "undefined" && globalThis.confirm?.(t("confirmDeleteBU"))) {
                                 deleteBusinessUnit(u.id);
+                                requestHrPlanningSyncDebounced();
                               }
                             }}
                           >
@@ -292,6 +311,7 @@ export function HrWorkforceOrganizationView() {
                   onClick={() => {
                     addDepartment(deptBuId, deptName);
                     setDeptName("");
+                    requestHrPlanningSyncDebounced();
                   }}
                 >
                   {t("newDept")}

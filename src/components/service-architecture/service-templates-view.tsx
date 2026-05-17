@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import {
 import { Link } from "@/i18n/navigation";
 import { useServiceArchitectureStore } from "@/stores/use-service-architecture-store";
 import { useHrWorkforceStore } from "@/stores/use-hr-workforce-store";
+import { useOperationalWorkspace } from "@/hooks/use-operational-workspace";
 
 export function ServiceTemplatesView() {
   const t = useTranslations("serviceArchitecture");
@@ -25,10 +26,17 @@ export function ServiceTemplatesView() {
   const addServiceTemplate = useServiceArchitectureStore((s) => s.addServiceTemplate);
   const addServiceTemplateTier = useServiceArchitectureStore((s) => s.addServiceTemplateTier);
 
-  const businessUnits = useHrWorkforceStore((s) => s.businessUnits);
+  const businessUnits = useHrWorkforceStore((s) => s.businessUnits.filter((b) => b.isActive));
+  const { selectedUnit } = useOperationalWorkspace();
+  const workspaceBuId = selectedUnit?.hrBusinessUnitId ?? businessUnits[0]?.id ?? "";
+
+  const scopedTemplates = useMemo(() => {
+    if (!workspaceBuId) return templates;
+    return templates.filter((t) => t.businessUnitId === workspaceBuId);
+  }, [templates, workspaceBuId]);
 
   const [familyId, setFamilyId] = useState("");
-  const [businessUnitId, setBusinessUnitId] = useState("");
+  const [businessUnitId, setBusinessUnitId] = useState(workspaceBuId);
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
@@ -37,7 +45,7 @@ export function ServiceTemplatesView() {
 
   const linkedTiersByTemplate = useMemo(
     () =>
-      templates.map((template) => {
+      scopedTemplates.map((template) => {
         const linkedTierIds = new Set(
           templateTiers
             .filter((it) => it.serviceTemplateId === template.id)
@@ -46,7 +54,7 @@ export function ServiceTemplatesView() {
         const linkedTiers = tiers.filter((tier) => linkedTierIds.has(tier.id));
         return { template, linkedTiers };
       }),
-    [templates, templateTiers, tiers]
+    [scopedTemplates, templateTiers, tiers]
   );
 
   const availableTiersForTemplate = useMemo(() => {
@@ -110,6 +118,7 @@ export function ServiceTemplatesView() {
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("templateNamePlaceholder")} />
             <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder={t("templateCodePlaceholder")} />
             <Button
+              disabled={!workspaceBuId}
               onClick={() => {
                 if (!familyId || !businessUnitId || !name.trim() || !code.trim()) return;
                 addServiceTemplate({
@@ -138,7 +147,7 @@ export function ServiceTemplatesView() {
                 <SelectValue placeholder={t("selectTemplate")} />
               </SelectTrigger>
               <SelectContent>
-                {templates.map((template) => (
+                {scopedTemplates.map((template) => (
                   <SelectItem key={template.id} value={template.id}>
                     {template.name}
                   </SelectItem>

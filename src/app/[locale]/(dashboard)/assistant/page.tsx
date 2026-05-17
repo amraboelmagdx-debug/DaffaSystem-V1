@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { applyScenario, runForecastEngine } from "@/lib/calculations/engine";
 import { weightedRevenue } from "@/lib/calculations/pipeline";
+import { resolveBusinessUnitIdForCompany } from "@/lib/platform-economics/operational-unit";
 import {
   scenariosForCompany,
   streamsForCompany,
@@ -25,6 +26,8 @@ export default function AssistantPage() {
   const { companies, selectedCompanyId, opportunities, selectedScenarioId } =
     useWorkspaceStore();
   const company = companies.find((c) => c.id === selectedCompanyId) ?? companies[0];
+  const hrBusinessUnitId =
+    company?.hrBusinessUnitId ?? resolveBusinessUnitIdForCompany(company?.id ?? "", companies);
   const streams = streamsForCompany(company.id);
   const scenario =
     scenariosForCompany(company.id).find((s) => s.id === selectedScenarioId) ??
@@ -73,6 +76,9 @@ export default function AssistantPage() {
         body: JSON.stringify({
           question: q,
           context: {
+            hrBusinessUnitId: hrBusinessUnitId ?? null,
+            companyId: company.id,
+            economicsGraphRoot: "ServiceEconomicsGraphContext",
             revenue: engine.revenue,
             netProfit: engine.netProfit,
             roi: engine.roi,

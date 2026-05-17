@@ -5,4 +5,6 @@ export type FormulaOwner =
   | "workbook-engine"
   | "pipeline"
   | "sales-plan-build-model"
+  | "service-economics"
+  | "deal-economics"
   | "derived";

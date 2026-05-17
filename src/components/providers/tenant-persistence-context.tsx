@@ -14,6 +14,7 @@ import {
   getServiceCatalogSyncState,
   type ServiceCatalogSyncState,
 } from "@/lib/persistence/service-catalog-sync-state";
+import type { OperationalWorkspaceBootstrapResult } from "@/lib/platform-economics/bootstrap-operational-workspace";
 
 export type TenantPersistenceContextValue = {
   organizationId: string | null;
@@ -23,6 +24,8 @@ export type TenantPersistenceContextValue = {
   hrSync: HrCatalogSyncState;
   saHydration: ServiceHydrationResult;
   saSync: ServiceCatalogSyncState;
+  workspaceBootstrap: OperationalWorkspaceBootstrapResult | null;
+  retryWorkspaceBootstrap: () => Promise<void>;
   switchOrganization: (organizationId: string) => Promise<void>;
 };
 
@@ -34,6 +37,10 @@ const defaultValue: TenantPersistenceContextValue = {
   hrSync: getHrCatalogSyncState(),
   saHydration: SERVICE_HYDRATION_IDLE,
   saSync: getServiceCatalogSyncState(),
+  workspaceBootstrap: null,
+  retryWorkspaceBootstrap: async () => {
+    throw new Error("TenantPersistenceProvider is not mounted");
+  },
   switchOrganization: async () => {
     throw new Error("TenantPersistenceProvider is not mounted");
   },

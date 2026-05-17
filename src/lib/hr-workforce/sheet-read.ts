@@ -59,7 +59,7 @@ export function buildTemplateSheetBlob(): Blob {
     "Additional Costs",
   ];
   const example = [
-    "Main",
+    "ZAN",
     "Engineering",
     "Platform",
     "Senior Engineer",
@@ -73,9 +73,27 @@ export function buildTemplateSheetBlob(): Blob {
     "true",
     "Laptop fund:500:fixed:monthly|Training:10:percentage:yearly",
   ];
+  const readme = [
+    ["HR import — how rows map to the platform"],
+    [""],
+    ["Holding / organization", "Your tenant name is set in Settings — not imported from this file."],
+    [
+      "Business Unit",
+      "Operational unit (e.g. ZAN). Active units sync to Executive, Sales Plan, and Service Architecture as the workspace “company”.",
+    ],
+    [
+      "Department",
+      "Creates revenue streams under that business unit (used by Sales Plan “Import from streams”).",
+    ],
+    ["Team / Role columns", "Workforce structure and cost inputs for HR intelligence."],
+    [""],
+    ["Example row below uses Business Unit = ZAN — replace with your unit names."],
+  ];
   const ws = XLSX.utils.aoa_to_sheet([headers, example]);
+  const wsReadme = XLSX.utils.aoa_to_sheet(readme);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Workforce");
+  XLSX.utils.book_append_sheet(wb, wsReadme, "Readme");
   const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" }) as Uint8Array;
   return new Blob([buf as unknown as BlobPart], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

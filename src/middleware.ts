@@ -31,10 +31,16 @@ export async function middleware(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (process.env.NEXT_PUBLIC_REQUIRE_AUTH === "true") {
-      const path = request.nextUrl.pathname;
-      const isAuthCallback = path.startsWith("/auth/callback");
-      const isLogin = /\/(en|ar)\/login(\/)?$/.test(path);
+    const path = request.nextUrl.pathname;
+    const isAuthCallback = path.startsWith("/auth/callback");
+    const isLogin = /\/(en|ar)\/login(\/)?$/.test(path);
+    const persistMode = process.env.NEXT_PUBLIC_PERSIST_MODE?.trim();
+    const requireAuthForPlanning =
+      process.env.NEXT_PUBLIC_REQUIRE_AUTH === "true" ||
+      (Boolean(supabaseUrl) &&
+        (persistMode === "dual_write" || persistMode === "server_authoritative"));
+
+    if (requireAuthForPlanning) {
       if (isAuthCallback) {
         return response;
       }
@@ -52,7 +58,10 @@ export async function middleware(request: NextRequest) {
         const safeLocale = routing.locales.includes(locale as "en" | "ar")
           ? locale
           : routing.defaultLocale;
-        return NextResponse.redirect(new URL(`/${safeLocale}`, request.url));
+        const nextPath = request.nextUrl.searchParams.get("next");
+        const target =
+          nextPath && nextPath.startsWith("/") ? nextPath : `/${safeLocale}`;
+        return NextResponse.redirect(new URL(target, request.url));
       }
     }
   }

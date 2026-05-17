@@ -20,6 +20,7 @@
     "cleanup:hr-legacy": "node scripts/cleanup-hr-legacy-persist.mjs",
     "cleanup:platform-data": "node scripts/cleanup-platform-data.mjs http://localhost:3001",
     "verify:hr-e2e": "node scripts/verify-hr-catalog-e2e.mjs http://localhost:3001",
+    "verify:operational-graph": "node scripts/verify-operational-graph-sync.mjs http://localhost:3001",
     "verify:hr-browser": "node scripts/verify-hr-browser-hydration.mjs http://localhost:3001",
     "inspect:hr-recovery": "node scripts/inspect-hr-recovery.mjs"
   },

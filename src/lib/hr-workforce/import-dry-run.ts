@@ -1,6 +1,7 @@
 import type { HrBusinessUnit, HrDepartment, HrTeam, JobRole } from "@/types/hr-workforce";
 import { newHrId } from "./id";
 import {
+  getCell,
   IMPORT_COLUMN_LABELS,
   listUnmappedImportKeys,
   mapRowToJobRole,
@@ -27,6 +28,8 @@ export interface ImportApplyDeltas {
 export type ImportPlanOptions = {
   /** When true, plan contains only structure/roles from the file (no merge with existing Main/General). */
   replaceExisting?: boolean;
+  /** Active tenant / holding name — validates optional Holding column when set. */
+  tenantOrganizationName?: string | null;
 };
 
 export type ImportPlanResult =
@@ -65,7 +68,20 @@ export function buildImportPlan(
   options?: ImportPlanOptions
 ): ImportPlanResult {
   const replaceExisting = options?.replaceExisting === true;
+  const tenantName = options?.tenantOrganizationName?.trim() ?? "";
   const errors: string[] = [];
+
+  if (columnMap.holding && tenantName) {
+    for (const row of rows) {
+      const cell = getCell(row, columnMap.holding).trim();
+      if (!cell) continue;
+      if (ciKey(cell) !== ciKey(tenantName)) {
+        errors.push(
+          `Row ${row.rowIndex}: Holding "${cell}" does not match organization "${tenantName}".`
+        );
+      }
+    }
+  }
 
   const businessUnits = new Map<string, HrBusinessUnit>();
   const departments = new Map<string, HrDepartment>();

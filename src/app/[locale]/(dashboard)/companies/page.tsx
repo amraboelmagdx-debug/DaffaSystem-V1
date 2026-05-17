@@ -12,7 +12,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { OperationalWorkspaceGate } from "@/components/operational-workspace/operational-workspace-gate";
 import { SampleDataPanel } from "@/components/sample-data/sample-data-panel";
+import { useOperationalWorkspace } from "@/hooks/use-operational-workspace";
+import { isOrphanOperationalUnit } from "@/lib/platform-economics/operational-unit";
 import { streamsForCompany, useWorkspaceStore } from "@/stores/use-workspace-store";
 import { formatCurrency, formatPct } from "@/lib/calculations/engine";
 import type { OpportunityTierDefinition } from "@/types/sales-plan";
@@ -30,9 +33,10 @@ type FormValues = z.infer<typeof schema>;
 
 export default function CompaniesPage() {
   const locale = useLocale();
-  const { companies, selectedCompanyId, setCompany, updateCompany } =
-    useWorkspaceStore();
-  const company = companies.find((c) => c.id === selectedCompanyId) ?? companies[0] ?? null;
+  const { linkedUnits, orphanUnits, selectedUnit, setCompany, isReady } =
+    useOperationalWorkspace();
+  const updateCompany = useWorkspaceStore((s) => s.updateCompany);
+  const company = selectedUnit;
   const streams = company ? streamsForCompany(company.id) : [];
 
   const [tierBands, setTierBands] = useState<OpportunityTierDefinition[]>(() =>
@@ -70,30 +74,45 @@ export default function CompaniesPage() {
     updateCompany(company.id, data);
   });
 
+  if (!isReady) {
+    return <OperationalWorkspaceGate>{null}</OperationalWorkspaceGate>;
+  }
+
   if (!company) {
     return (
+      <OperationalWorkspaceGate>
       <div className="mx-auto max-w-2xl space-y-4">
         <SampleDataPanel moduleId="workspace" />
         <p className="text-center text-sm text-muted-foreground">
-          No companies in the workspace. Load sample data to get started.
+          No HR-linked business units in the workspace yet. Add units in HR Workforce and refresh.
         </p>
       </div>
+      </OperationalWorkspaceGate>
     );
   }
 
   return (
+    <OperationalWorkspaceGate>
     <div className="mx-auto max-w-5xl space-y-8">
       <SampleDataPanel moduleId="workspace" />
       <div>
         <h1 className="text-3xl font-semibold tracking-tight">Company management</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Targets, fixed cost base, and blended contribution drive the forecast engine
-          and ROI math across portfolios.
+          Targets, fixed cost base, and blended contribution for the active business unit
+          (HR-synced planning projection).
         </p>
       </div>
 
+      {orphanUnits.length > 0 && (
+        <p className="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-muted-foreground">
+          {orphanUnits.length} workspace unit(s) are not linked to HR — sync from HR → Organization
+          or archive them. New Sales Plan saves require a linked unit.
+          {company && isOrphanOperationalUnit(company) ? " The selected unit is orphaned." : ""}
+        </p>
+      )}
+
       <div className="flex flex-wrap gap-2">
-        {companies.map((c) => (
+        {linkedUnits.map((c) => (
           <Button
             key={c.id}
             variant={c.id === company.id ? "default" : "outline"}
@@ -272,5 +291,6 @@ export default function CompaniesPage() {
         </CardContent>
       </Card>
     </div>
+    </OperationalWorkspaceGate>
   );
 }

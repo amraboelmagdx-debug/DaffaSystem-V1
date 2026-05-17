@@ -9,6 +9,7 @@ import { legacyFlagsForOperationalRoleType } from "./role-operational-type";
 import { parseBool, parseEmploymentType, validateJobRole } from "./validation";
 
 export type ImportColumnKey =
+  | "holding"
   | "businessUnit"
   | "department"
   | "team"
@@ -24,6 +25,7 @@ export type ImportColumnKey =
   | "additionalCosts";
 
 export const IMPORT_COLUMN_LABELS: Record<ImportColumnKey, string> = {
+  holding: "Holding",
   businessUnit: "Business Unit",
   department: "Department",
   team: "Team",
@@ -188,9 +190,15 @@ export function matchImportHeader(
 
 export function guessColumnMap(headers: string[]): Partial<Record<ImportColumnKey, string>> {
   return {
+    holding: matchImportHeader(headers, {
+      exact: ["holding", "holding company", "organization", "organisation", "org", "tenant"],
+      includes: ["holding company", "holding name"],
+      excludes: ["business unit", "bu"],
+    }),
     businessUnit: matchImportHeader(headers, {
-      exact: ["business unit", "bu", "company", "portfolio", "unit", "legal entity"],
-      includes: ["business unit", "company", "portfolio"],
+      exact: ["business unit", "bu", "operating unit", "division"],
+      includes: ["business unit", "operating unit"],
+      excludes: ["holding"],
     }),
     department: matchImportHeader(headers, {
       exact: ["department", "dept"],

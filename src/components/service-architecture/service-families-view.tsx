@@ -14,9 +14,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useServiceArchitectureStore } from "@/stores/use-service-architecture-store";
+import { useOperationalWorkspace } from "@/hooks/use-operational-workspace";
 
 export function ServiceFamiliesView() {
   const t = useTranslations("serviceArchitecture");
+  const { selectedUnit } = useOperationalWorkspace();
   const serviceFamilies = useServiceArchitectureStore((s) => s.serviceFamilies);
   const serviceTiers = useServiceArchitectureStore((s) => s.serviceTiers);
   const addServiceFamily = useServiceArchitectureStore((s) => s.addServiceFamily);
@@ -40,6 +42,11 @@ export function ServiceFamiliesView() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{t("familiesTitle")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{t("familiesSubtitle")}</p>
+        {selectedUnit?.name ? (
+          <p className="mt-1 text-xs text-muted-foreground">
+            {t("activeBuContext", { name: selectedUnit.name })}
+          </p>
+        ) : null}
       </div>
 
       <SampleDataPanel moduleId="service-architecture" />

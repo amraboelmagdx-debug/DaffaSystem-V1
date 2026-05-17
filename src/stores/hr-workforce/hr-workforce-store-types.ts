@@ -50,6 +50,8 @@ export interface HrWorkforceState {
   /** ISO timestamp of last dry-run attempt (success or failure). */
   importSessionLastDryRunAt: string | null;
   importSessionReplaceExisting: boolean;
+  /** Active tenant / holding name for optional Holding column validation on import. */
+  importSessionTenantOrganizationName: string | null;
   snapshots: HrSnapshotRecord[];
 
   /** Session-only: last failed snapshot restore message (not persisted). */

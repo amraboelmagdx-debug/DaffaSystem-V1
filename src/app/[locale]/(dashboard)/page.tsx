@@ -32,7 +32,9 @@ import {
 } from "@/lib/calculations/engine";
 import { evaluateExecutiveWorkspaceMeasures } from "@/lib/planning/measures";
 import { InsightBulb } from "@/components/planning/insight-bulb";
+import { OperationalWorkspaceGate } from "@/components/operational-workspace/operational-workspace-gate";
 import { SampleDataPanel } from "@/components/sample-data/sample-data-panel";
+import { useOperationalWorkspace } from "@/hooks/use-operational-workspace";
 import {
   scenariosForCompany,
   streamsForCompany,
@@ -45,17 +47,13 @@ export default function ExecutiveDashboardPage() {
   const tp = useTranslations("planning");
   const locale = useLocale();
   const fmt = (n: number) => formatCurrencyLocale(n, locale);
-  const {
-    companies,
-    selectedCompanyId,
-    setCompany,
-    selectedScenarioId,
-    setScenario,
-    opportunities,
-    tierLineOverrides,
-  } = useWorkspaceStore();
+  const { linkedUnits, selectedUnit, setCompany, isReady } = useOperationalWorkspace();
+  const selectedScenarioId = useWorkspaceStore((s) => s.selectedScenarioId);
+  const setScenario = useWorkspaceStore((s) => s.setScenario);
+  const opportunities = useWorkspaceStore((s) => s.opportunities);
+  const tierLineOverrides = useWorkspaceStore((s) => s.tierLineOverrides);
 
-  const company = companies.find((c) => c.id === selectedCompanyId) ?? companies[0];
+  const company = selectedUnit;
   const scenarios = company ? scenariosForCompany(company.id) : [];
   const scenario =
     scenarios.find((s) => s.id === selectedScenarioId) ?? scenarios[0];
@@ -98,18 +96,24 @@ export default function ExecutiveDashboardPage() {
       ? fmt(workbookTargets.salesTarget)
       : tp("unboundedSales");
 
+  if (!isReady) {
+    return <OperationalWorkspaceGate>{null}</OperationalWorkspaceGate>;
+  }
+
   if (!company || !measures || !scenario) {
     return (
-      <div className="mx-auto max-w-2xl space-y-4">
-        <SampleDataPanel moduleId="workspace" />
-        <p className="text-center text-sm text-muted-foreground">
-          No companies in the workspace. Load sample data to open the executive dashboard.
-        </p>
-      </div>
+      <OperationalWorkspaceGate>
+        <div className="mx-auto max-w-2xl space-y-4">
+          <SampleDataPanel moduleId="workspace" />
+          <p className="text-center text-sm text-muted-foreground">{t("emptyLinkedUnits")}</p>
+          <p className="text-center text-xs text-muted-foreground">{t("emptyLinkedUnitsHint")}</p>
+        </div>
+      </OperationalWorkspaceGate>
     );
   }
 
   return (
+    <OperationalWorkspaceGate>
     <div className="mx-auto max-w-7xl space-y-8">
       <SampleDataPanel moduleId="workspace" />
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -132,7 +136,7 @@ export default function ExecutiveDashboardPage() {
                 <SelectValue placeholder={t("company")} />
               </SelectTrigger>
               <SelectContent>
-                {companies.map((c) => (
+                {linkedUnits.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.name}
                   </SelectItem>
@@ -367,5 +371,6 @@ export default function ExecutiveDashboardPage() {
         </CardContent>
       </Card>
     </div>
+    </OperationalWorkspaceGate>
   );
 }

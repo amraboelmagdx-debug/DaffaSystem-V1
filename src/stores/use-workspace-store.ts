@@ -1,5 +1,7 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { createJSONStorage, persist } from "zustand/middleware";
+import { WORKSPACE_BASE_KEY } from "@/lib/persistence/persist-keys";
+import { createTenantScopedStorage } from "@/lib/persistence/tenant-storage";
 import {
   demoCompanies,
   demoOpportunities,
@@ -7,6 +9,7 @@ import {
   demoStreams,
 } from "@/data/demo-seed";
 import type { TierLine } from "@/lib/planning/workbook-engine";
+import { activeOperationalUnits } from "@/lib/platform-economics/operational-unit";
 import type { DemoCompany, DemoOpportunity, DemoRevenueStream, DemoScenario } from "@/types/domain";
 
 function cloneStreams(): DemoRevenueStream[] {
@@ -33,12 +36,19 @@ interface WorkspaceState {
   updateOpportunity: (id: string, patch: Partial<DemoOpportunity>) => void;
   setTierLinesForStream: (streamId: string, lines: TierLine[]) => void;
   resetTierLinesForCompany: (companyId: string) => void;
-  /** Append a company + its streams + scenarios (e.g. Sales Plan “Save to workspace”). */
+  /** Append a company + its streams + scenarios (legacy — prefer applySalesPlanToOperationalUnit). */
   appendSalesPlanSnapshot: (payload: {
     company: DemoCompany;
     streams: DemoRevenueStream[];
     scenarios: DemoScenario[];
   }) => void;
+  /** Merge Sales Plan outputs into an HR-linked business unit (no orphan company). */
+  applySalesPlanToOperationalUnit: (payload: {
+    companyId: string;
+    companyPatch: Partial<DemoCompany>;
+    streams: DemoRevenueStream[];
+    scenarioPatch?: Partial<DemoScenario>;
+  }) => boolean;
   /** Replace persisted workspace with the default executive demo pack. */
   loadDemoPack: () => void;
   /** Clear companies/streams/scenarios (empty planning workspace). */
@@ -93,6 +103,52 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           selectedCompanyId: company.id,
           selectedScenarioId: newScenarios[0]?.id ?? s.selectedScenarioId,
         })),
+      applySalesPlanToOperationalUnit: ({ companyId, companyPatch, streams: planStreams, scenarioPatch }) => {
+        const s = get();
+        const company = s.companies.find((c) => c.id === companyId);
+        if (!company?.hrBusinessUnitId) return false;
+
+        const streamById = new Map(
+          s.streams.filter((st) => st.companyId === companyId).map((st) => [st.id, st])
+        );
+        const mergedStreams = planStreams.map((ps) => {
+          const prev = streamById.get(ps.id);
+          return {
+            ...ps,
+            companyId,
+            hrDepartmentId: ps.hrDepartmentId ?? prev?.hrDepartmentId ?? null,
+            serviceTemplateId: ps.serviceTemplateId ?? prev?.serviceTemplateId ?? null,
+            serviceFamilyId: ps.serviceFamilyId ?? prev?.serviceFamilyId ?? null,
+          };
+        });
+        const mergedIds = new Set(mergedStreams.map((st) => st.id));
+        const untouched = s.streams.filter(
+          (st) => st.companyId === companyId && !mergedIds.has(st.id)
+        );
+
+        const scenariosForCo = s.scenarios.filter((sc) => sc.companyId === companyId);
+        const baseline = scenariosForCo.find((sc) => sc.baseline) ?? scenariosForCo[0];
+        const nextScenarios = baseline
+          ? s.scenarios.map((sc) =>
+              sc.id === baseline.id ? { ...sc, ...scenarioPatch } : sc
+            )
+          : s.scenarios;
+
+        set({
+          companies: s.companies.map((c) =>
+            c.id === companyId ? { ...c, ...companyPatch } : c
+          ),
+          streams: [
+            ...s.streams.filter((st) => st.companyId !== companyId),
+            ...untouched,
+            ...mergedStreams,
+          ],
+          scenarios: nextScenarios,
+          selectedCompanyId: companyId,
+          selectedScenarioId: baseline?.id ?? s.selectedScenarioId,
+        });
+        return true;
+      },
       loadDemoPack: () =>
         set({
           selectedCompanyId: demoCompanies[0]?.id ?? "",
@@ -116,6 +172,8 @@ export const useWorkspaceStore = create<WorkspaceState>()(
     }),
     {
       name: "efp-workspace",
+      storage: createJSONStorage(() => createTenantScopedStorage(WORKSPACE_BASE_KEY)),
+      skipHydration: true,
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<WorkspaceState>;
         return {
@@ -151,4 +209,9 @@ export function streamsForCompany(companyId: string): DemoRevenueStream[] {
 
 export function scenariosForCompany(companyId: string): DemoScenario[] {
   return useWorkspaceStore.getState().scenarios.filter((s) => s.companyId === companyId);
+}
+
+/** Await tenant-scoped workspace persist before applying server projection. */
+export async function rehydrateWorkspaceStore(): Promise<void> {
+  await useWorkspaceStore.persist.rehydrate();
 }

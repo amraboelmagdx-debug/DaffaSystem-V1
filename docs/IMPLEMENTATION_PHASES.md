@@ -21,6 +21,23 @@
 
 **Phase 0 status:** Complete (governance suite in `docs/`).
 
+**BU-centric correction track (parallel):** Aligns planning “company” with HR Business Units before Deal Economics. Phases **BU-0 … BU-5** below — non-destructive through BU-3.
+
+---
+
+## 1b. BU-centric correction track
+
+| Track phase | Goal | Destructive DB? |
+|-------------|------|-----------------|
+| **BU-0** | Record hierarchy decisions ([DATA_OWNERSHIP.md](./DATA_OWNERSHIP.md) §1.1, §6) | No |
+| **BU-1** | Semantic aliases, orphan guards, Sales Plan → selected BU | No |
+| **BU-2** | Excel Holding validation, sync stream rename, server-first workspace | No |
+| **BU-3** | `DealEconomicsInput` contract, metadata 009, `bu.*` measures | Additive only |
+| **BU-4** | BU forecast context, Assistant graph, SA BU filter | No |
+| **BU-5** | Schema gate: backfill script, deprecate scaffold tables | Gated |
+
+**Gate before Deal Economics UI:** BU-1–BU-3 complete; orphan companies quarantined; stream `hrDepartmentId` on sync.
+
 ---
 
 ## 2. Phase 0 — Governance documentation ✅
@@ -193,8 +210,11 @@ Use **before promoting any phase** to complete:
 | 2026-05-17 | Phase 1 pre-implementation audit ([PHASE_1_AUDIT.md](./PHASE_1_AUDIT.md)) | Done |
 | 2026-05-17 | Phase 1 tenant spine code (context, APIs, hr_workforce_catalog) | Done |
 | 2026-05-17 | Phase 1 post-implementation audit ([PHASE_1_POST_IMPLEMENTATION_AUDIT.md](./PHASE_1_POST_IMPLEMENTATION_AUDIT.md)) | Done |
-| TBD | `hr_business_units` table naming | Pending stakeholder |
-| TBD | localStorage migration strategy (dual-write vs import) | Pending |
+| 2026-05-17 | BU-centric: Holding = `organizations`, BU = HR catalog, `companies` = projection | Approved — see DATA_OWNERSHIP §6 |
+| 2026-05-17 | Deprecate `public.business_units` / `portfolios` for HR | Approved — drop in BU-5 only |
+| 2026-05-17 | Keep `companies` UUID FK; rename semantics in API later | Approved (option A) |
+| TBD | `hr_business_units` dedicated table | Deferred |
+| TBD | localStorage migration strategy (dual-write vs import) | In progress (economics dual-write) |
 
 ---
 

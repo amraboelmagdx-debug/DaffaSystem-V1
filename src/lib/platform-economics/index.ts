@@ -1,3 +1,21 @@
 export * from "./types";
 export * from "./bu-monthly-cost";
-export { syncEconomicsGraphFromHr, refreshPlanningWorkspaceFromServer } from "./client-sync";
+export {
+  bootstrapOperationalWorkspaceFromHr,
+  refreshPlanningWorkspaceFromServer,
+  type OperationalWorkspaceBootstrapResult,
+} from "./bootstrap-operational-workspace";
+export { syncEconomicsGraphFromHr } from "./client-sync";
+export {
+  requestHrPlanningSyncDebounced,
+  requestHrPlanningSyncNow,
+} from "./request-hr-planning-sync";
+export {
+  activeOperationalUnits,
+  isLinkedOperationalUnit,
+  isOrphanOperationalUnit,
+  partitionOperationalUnits,
+  resolveBusinessUnitIdForCompany,
+  resolveCompanyIdForBusinessUnit,
+  type OperationalUnit,
+} from "./operational-unit";

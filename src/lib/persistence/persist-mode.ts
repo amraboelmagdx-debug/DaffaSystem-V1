@@ -1,3 +1,5 @@
+import { isSupabaseConfigured } from "@/lib/persistence/is-supabase-configured";
+
 export type PersistMode = "local_only" | "dual_write" | "server_authoritative";
 
 const VALID_MODES: PersistMode[] = ["local_only", "dual_write", "server_authoritative"];
@@ -35,6 +37,15 @@ export function shouldHydrateServiceCatalogFromServer(): boolean {
   if (raw === "false" || raw === "0") return false;
   return true;
 }
+
+/** BU-centric: load planning workspace from Supabase when configured (independent of PERSIST_MODE). */
+export function shouldHydrateWorkspaceFromServer(): boolean {
+  const raw = process.env.NEXT_PUBLIC_WORKSPACE_SERVER_HYDRATE;
+  if (raw === "false" || raw === "0") return false;
+  return isSupabaseConfigured();
+}
+
+export { isSupabaseConfigured };
 
 /** @deprecated Use shouldHydrateHrCatalogFromServer */
 export function shouldHydrateFromServer(): boolean {

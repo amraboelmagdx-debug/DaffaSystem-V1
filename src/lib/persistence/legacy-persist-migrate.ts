@@ -3,6 +3,7 @@ import {
   legacyPersistKeyForBase,
   SERVICE_ARCHITECTURE_BASE_KEY,
   tenantPersistKey,
+  WORKSPACE_BASE_KEY,
 } from "@/lib/persistence/persist-keys";
 import { isTenantNamespacedPersistEnabled } from "@/lib/persistence/persist-mode";
 
@@ -63,5 +64,6 @@ export function migrateLegacyPersistForOrganization(organizationId: string): voi
   if (hasLegacyMigratedFlag(organizationId)) return;
 
   migrateLegacyPersistForBase(organizationId, SERVICE_ARCHITECTURE_BASE_KEY);
+  migrateLegacyPersistForBase(organizationId, WORKSPACE_BASE_KEY);
   setLegacyMigratedFlag(organizationId);
 }

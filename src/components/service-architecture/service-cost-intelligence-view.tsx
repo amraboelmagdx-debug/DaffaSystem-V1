@@ -21,13 +21,13 @@ import { deriveWorkspaceProjection } from "@/lib/hr-workforce/workspace-projecti
 import { getTemplateLinkedTiers } from "@/lib/service-architecture/selectors";
 import { evaluateServiceEconomics, buildServiceEconomicsEvaluateInput } from "@/lib/service-economics";
 import { useServiceCostCatalogSlice } from "@/hooks/use-service-cost-catalog-slice";
-import { useWorkspaceStore } from "@/stores/use-workspace-store";
 import { getScenarioPresetById, SERVICE_COST_SCENARIO_PRESETS } from "@/lib/service-cost-simulation/scenarios";
 import { toServiceCostBaselineSnapshot } from "@/lib/service-cost-simulation/sales-plan-cost-adapter";
 import { exportAssumptionsToImportRows, buildServiceCostAssumptionImportPreview } from "@/lib/service-cost-simulation/cost-assumption-import";
 import { DEFAULT_SERVICE_COST_ASSUMPTIONS } from "@/lib/service-cost-simulation/defaults";
 import { Badge } from "@/components/ui/badge";
 import { SampleDataPanel } from "@/components/sample-data/sample-data-panel";
+import { useOperationalWorkspace } from "@/hooks/use-operational-workspace";
 
 export function ServiceCostIntelligenceView() {
   const t = useTranslations("serviceArchitecture");
@@ -51,7 +51,16 @@ export function ServiceCostIntelligenceView() {
   const resetAssumptions = useServiceCostSimulationPrefsStore((s) => s.resetAssumptions);
 
   const catalog = useServiceCostCatalogSlice();
-  const companies = useWorkspaceStore((s) => s.companies);
+  const { selectedUnit } = useOperationalWorkspace();
+  const scopedCompanies = useMemo(
+    () => (selectedUnit ? [selectedUnit] : []),
+    [selectedUnit]
+  );
+  const scopedBusinessUnitIds = useMemo(
+    () =>
+      selectedUnit?.hrBusinessUnitId ? [selectedUnit.hrBusinessUnitId] : businessUnits.map((b) => b.id),
+    [selectedUnit, businessUnits]
+  );
 
   const [templateId, setTemplateId] = useState("");
   const [tierId, setTierId] = useState("");
@@ -77,13 +86,22 @@ export function ServiceCostIntelligenceView() {
       catalog,
       workforce,
       roles,
-      businessUnitIds: businessUnits.map((b) => b.id),
-      companies,
+      businessUnitIds: scopedBusinessUnitIds,
+      companies: scopedCompanies,
       currency: hrGlobalSettings.defaultCurrency,
       assumptions,
       scenario,
     }),
-    [catalog, workforce, roles, businessUnits, companies, hrGlobalSettings.defaultCurrency, assumptions, scenario]
+    [
+      catalog,
+      workforce,
+      roles,
+      scopedBusinessUnitIds,
+      scopedCompanies,
+      hrGlobalSettings.defaultCurrency,
+      assumptions,
+      scenario,
+    ]
   );
 
   const simulation = useMemo(() => {

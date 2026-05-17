@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Link, useRouter } from "@/i18n/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,8 +13,10 @@ import { createClient } from "@/lib/supabase/client";
 export default function LoginPage() {
   const t = useTranslations("login");
   const params = useParams<{ locale: string }>();
+  const searchParams = useSearchParams();
   const locale = params?.locale ?? "en";
   const router = useRouter();
+  const nextPath = searchParams.get("next");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -28,7 +30,11 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setMessage(error?.message ?? "OK");
     if (!error) {
-      router.replace("/");
+      if (nextPath && nextPath.startsWith("/")) {
+        router.replace(nextPath);
+      } else {
+        router.replace("/");
+      }
     }
   };
 

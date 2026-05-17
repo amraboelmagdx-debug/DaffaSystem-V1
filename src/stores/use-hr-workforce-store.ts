@@ -9,6 +9,7 @@ import type {
   OhManualSettings,
 } from "@/types/hr-workforce";
 import { newHrId } from "@/lib/hr-workforce/id";
+import { notifyHrStructureChangedDebounced } from "@/lib/platform-economics/notify-hr-structure-changed";
 import type { ImportApplyDeltas } from "@/lib/hr-workforce/import-dry-run";
 import { DEFAULT_OH } from "@/lib/hr-workforce/default-oh";
 import { migrateRoleOperationalType } from "@/lib/hr-workforce/role-operational-type";
@@ -253,6 +254,7 @@ export const useHrWorkforceStore = create<HrWorkforceState>()(
             [u.id]: { ...DEFAULT_OH },
           },
         });
+        notifyHrStructureChangedDebounced();
         return u;
       },
 
@@ -263,6 +265,7 @@ export const useHrWorkforceStore = create<HrWorkforceState>()(
             u.id === id ? { ...u, ...patch, updatedAt: t } : u
           ),
         });
+        if (patch.isActive !== false) notifyHrStructureChangedDebounced();
       },
 
       addDepartment: (businessUnitId, name) => {
@@ -277,6 +280,7 @@ export const useHrWorkforceStore = create<HrWorkforceState>()(
           updatedAt: t,
         };
         set({ departments: [...get().departments, d] });
+        notifyHrStructureChangedDebounced();
         return d;
       },
 
