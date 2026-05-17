@@ -145,21 +145,71 @@ export function makeServiceArchitectureDemoSeed(input: {
       code: "D_BLUEPRINT_V1",
       ...meta(),
     },
+    {
+      id: newServiceId("svc_deliverable"),
+      serviceTemplateTierPhaseId: ttpEnterpriseDiscovery.id,
+      name: "Enterprise discovery report",
+      code: "D_ENT_DISCOVERY",
+      ...meta(),
+    },
+    {
+      id: newServiceId("svc_deliverable"),
+      serviceTemplateTierPhaseId: ttpEnterpriseDesign.id,
+      name: "Governance playbook",
+      code: "D_ENT_GOV_PLAYBOOK",
+      ...meta(),
+    },
   ];
 
-  const roleAllocations: ServiceRoleAllocation[] =
-    input.roleIds.length > 0
-      ? [
-          {
-            id: newServiceId("svc_alloc"),
-            serviceTemplateTierPhaseId: ttpStandardDiscovery.id,
-            jobRoleId: input.roleIds[0],
-            allocatedHours: 24,
-            notes: "Discovery interviews and baseline synthesis.",
-            ...meta(),
-          },
-        ]
-      : [];
+  const roleAllocations: ServiceRoleAllocation[] = [];
+  if (input.roleIds.length > 0) {
+    const primary = input.roleIds[0]!;
+    const secondary = input.roleIds[1] ?? primary;
+    roleAllocations.push(
+      {
+        id: newServiceId("svc_alloc"),
+        serviceTemplateTierPhaseId: ttpStandardDiscovery.id,
+        jobRoleId: primary,
+        allocatedHours: 24,
+        notes: "Discovery interviews and baseline synthesis.",
+        ...meta(),
+      },
+      {
+        id: newServiceId("svc_alloc"),
+        serviceTemplateTierPhaseId: ttpStandardDesign.id,
+        jobRoleId: secondary,
+        allocatedHours: 40,
+        notes: "Blueprint workshops and design QA.",
+        ...meta(),
+      },
+      {
+        id: newServiceId("svc_alloc"),
+        serviceTemplateTierPhaseId: ttpEnterpriseDiscovery.id,
+        jobRoleId: primary,
+        allocatedHours: 32,
+        notes: "Multi-BU discovery facilitation.",
+        ...meta(),
+      },
+      {
+        id: newServiceId("svc_alloc"),
+        serviceTemplateTierPhaseId: ttpEnterpriseDesign.id,
+        jobRoleId: secondary,
+        allocatedHours: 56,
+        notes: "Enterprise rollout design and controls.",
+        ...meta(),
+      }
+    );
+    if (input.roleIds.length > 2) {
+      roleAllocations.push({
+        id: newServiceId("svc_alloc"),
+        serviceTemplateTierPhaseId: ttpEnterpriseDesign.id,
+        jobRoleId: input.roleIds[2]!,
+        allocatedHours: 16,
+        notes: "Specialist review hours.",
+        ...meta(),
+      });
+    }
+  }
 
   return {
     serviceFamilies: [family],

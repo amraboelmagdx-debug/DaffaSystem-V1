@@ -53,13 +53,15 @@ export function mapPlanningDtoToClientModel(
     companyId: String(s.company_id),
     name: String(s.name ?? ""),
     hrDepartmentId: metaField(s.metadata, "hrDepartmentId") ?? null,
+    serviceTemplateId: metaField(s.metadata, "serviceTemplateId") ?? null,
+    serviceFamilyId: metaField(s.metadata, "serviceFamilyId") ?? null,
     contributionMarginPct: Number(s.contribution_margin_pct ?? 0.38),
     revenueWeight: Number(s.revenue_weight ?? 0),
     avgDealSize: Number(s.avg_deal_size ?? 0),
     growthRatePct: Number(s.growth_rate_pct ?? 0),
     conversionRatePct: Number(s.conversion_rate_pct ?? 0),
     salesCycleDays: Number(s.sales_cycle_days ?? 60),
-  })) as DemoRevenueStream[] & { hrDepartmentId?: string | null };
+  }));
 
   const scenarios: DemoScenario[] = (dto.scenarios ?? []).map((sc) => {
     const a =
@@ -112,10 +114,7 @@ export function applyPlanningClientModelToWorkspaceState(model: PlanningWorkspac
   selectedScenarioId: string;
 } {
   const companies = model.companies.map((c) => ({ ...c }));
-  const streams = model.streams.map((s) => {
-    const { hrDepartmentId: _h, ...rest } = s as DemoRevenueStream & { hrDepartmentId?: string | null };
-    return rest;
-  });
+  const streams: DemoRevenueStream[] = model.streams.map((s) => ({ ...s }));
   const scenarios = model.scenarios.map((s) => ({ ...s }));
   const opportunities = model.opportunities.map((o) => ({ ...o }));
   const selectedCompanyId = companies[0]?.id ?? "";

@@ -29,7 +29,14 @@ export function shouldHydrateHrCatalogFromServer(): boolean {
   return true;
 }
 
-/** @deprecated Use shouldHydrateHrCatalogFromServer — SA hydrate is 2.3+. */
+/** Phase 2.3+: read service catalog from server (default on unless disabled). */
+export function shouldHydrateServiceCatalogFromServer(): boolean {
+  const raw = process.env.NEXT_PUBLIC_SA_SERVER_HYDRATE;
+  if (raw === "false" || raw === "0") return false;
+  return true;
+}
+
+/** @deprecated Use shouldHydrateHrCatalogFromServer */
 export function shouldHydrateFromServer(): boolean {
   return shouldHydrateHrCatalogFromServer();
 }

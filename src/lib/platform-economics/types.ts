@@ -56,6 +56,8 @@ export type PlanningWorkspaceClientModel = {
     companyId: string;
     name: string;
     hrDepartmentId: string | null;
+    serviceTemplateId?: string | null;
+    serviceFamilyId?: string | null;
     contributionMarginPct: number;
     revenueWeight: number;
     avgDealSize: number;

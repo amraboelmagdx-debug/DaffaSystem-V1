@@ -3,6 +3,7 @@ import type {
   DeliveryPhase,
   ServiceDeliverable,
   ServiceFamily,
+  ServiceRoleAllocation,
   ServiceTemplate,
   ServiceTemplateTier,
   ServiceTemplateTierPhase,
@@ -16,7 +17,8 @@ type CatalogEntityType =
   | "serviceTemplateTier"
   | "deliveryPhase"
   | "serviceTemplateTierPhase"
-  | "serviceDeliverable";
+  | "serviceDeliverable"
+  | "serviceRoleAllocation";
 
 export interface ServiceCatalogImportRow {
   serviceFamilyCode?: string;
@@ -31,6 +33,10 @@ export interface ServiceCatalogImportRow {
   phaseSortOrder?: number;
   deliverableCode?: string;
   deliverableName?: string;
+  jobRoleId?: string;
+  jobRoleCode?: string;
+  allocatedHours?: number;
+  allocationNotes?: string;
 }
 
 export interface ServiceCatalogImportIssue {
@@ -47,6 +53,7 @@ export interface ServiceCatalogImportPlan {
   deliveryPhases: DeliveryPhase[];
   serviceTemplateTierPhases: ServiceTemplateTierPhase[];
   serviceDeliverables: ServiceDeliverable[];
+  serviceRoleAllocations: ServiceRoleAllocation[];
 }
 
 export interface ServiceCatalogImportPreview {
@@ -109,6 +116,7 @@ export function buildServiceCatalogImportPlan(rows: ServiceCatalogImportRow[]): 
   const phaseByKey = new Map<string, DeliveryPhase>();
   const templateTierPhaseByKey = new Map<string, ServiceTemplateTierPhase>();
   const deliverableByKey = new Map<string, ServiceDeliverable>();
+  const allocationByKey = new Map<string, ServiceRoleAllocation>();
 
   normalizedRows.forEach((row, idx) => {
     const rowIndex = idx + 1;
@@ -124,8 +132,21 @@ export function buildServiceCatalogImportPlan(rows: ServiceCatalogImportRow[]): 
     if (row.phaseSortOrder == null || row.phaseSortOrder < 0) {
       issues.push({ rowIndex, field: "phaseSortOrder", message: "Phase sort order must be a non-negative number" });
     }
-    if (!row.deliverableCode) issues.push({ rowIndex, field: "deliverableCode", message: "Deliverable code is required" });
-    if (!row.deliverableName) issues.push({ rowIndex, field: "deliverableName", message: "Deliverable name is required" });
+    const hasAllocation =
+      Boolean(row.jobRoleId?.trim() || row.jobRoleCode?.trim()) ||
+      row.allocatedHours != null;
+    if (!hasAllocation) {
+      if (!row.deliverableCode) issues.push({ rowIndex, field: "deliverableCode", message: "Deliverable code is required" });
+      if (!row.deliverableName) issues.push({ rowIndex, field: "deliverableName", message: "Deliverable name is required" });
+    }
+    if (hasAllocation) {
+      if (!row.jobRoleId?.trim() && !row.jobRoleCode?.trim()) {
+        issues.push({ rowIndex, field: "jobRoleId", message: "Job role id or code is required for allocation rows" });
+      }
+      if (row.allocatedHours == null || !Number.isFinite(row.allocatedHours) || row.allocatedHours < 0) {
+        issues.push({ rowIndex, field: "allocatedHours", message: "Allocated hours must be >= 0 for allocation rows" });
+      }
+    }
 
     const familyKey = row.serviceFamilyCode || `family-name:${row.serviceFamilyName}`;
     if (familyKey && !familyByKey.has(familyKey) && row.serviceFamilyName) {
@@ -187,7 +208,12 @@ export function buildServiceCatalogImportPlan(rows: ServiceCatalogImportRow[]): 
       }
     }
 
-    if (!template || !tier) return;
+    if (!template || !tier) {
+      if (hasAllocation) {
+        issues.push({ rowIndex, field: "row", message: "Allocation row requires template and tier context" });
+      }
+      return;
+    }
     const templateTierKey = `${template.id}::${tier.id}`;
     if (!templateTierByKey.has(templateTierKey)) {
       templateTierByKey.set(templateTierKey, {
@@ -225,6 +251,22 @@ export function buildServiceCatalogImportPlan(rows: ServiceCatalogImportRow[]): 
     const templateTierPhase = templateTierPhaseByKey.get(templateTierPhaseKey);
     if (!templateTierPhase) return;
 
+    if (hasAllocation && row.allocatedHours != null) {
+      const roleKey = (row.jobRoleId ?? row.jobRoleCode ?? "").trim();
+      const allocKey = `${templateTierPhase.id}::${roleKey}`;
+      if (roleKey && !allocationByKey.has(allocKey)) {
+        allocationByKey.set(allocKey, {
+          id: newServiceId("svc_alloc"),
+          serviceTemplateTierPhaseId: templateTierPhase.id,
+          jobRoleId: row.jobRoleId?.trim() || row.jobRoleCode!.trim(),
+          allocatedHours: row.allocatedHours,
+          notes: row.allocationNotes?.trim() || "",
+          ...makeMeta(),
+        });
+      }
+      return;
+    }
+
     const deliverableKey = row.deliverableCode || `${templateTierPhase.id}::deliverable-name:${row.deliverableName}`;
     if (deliverableKey && !deliverableByKey.has(deliverableKey) && row.deliverableName) {
       deliverableByKey.set(deliverableKey, {
@@ -245,6 +287,7 @@ export function buildServiceCatalogImportPlan(rows: ServiceCatalogImportRow[]): 
     deliveryPhases: [...phaseByKey.values()],
     serviceTemplateTierPhases: [...templateTierPhaseByKey.values()],
     serviceDeliverables: [...deliverableByKey.values()],
+    serviceRoleAllocations: [...allocationByKey.values()],
   };
 
   const preview: ServiceCatalogImportPreview = {
@@ -256,6 +299,7 @@ export function buildServiceCatalogImportPlan(rows: ServiceCatalogImportRow[]): 
       deliveryPhase: plan.deliveryPhases.length,
       serviceTemplateTierPhase: plan.serviceTemplateTierPhases.length,
       serviceDeliverable: plan.serviceDeliverables.length,
+      serviceRoleAllocation: plan.serviceRoleAllocations.length,
     },
   };
 

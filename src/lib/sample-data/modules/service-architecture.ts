@@ -1,3 +1,5 @@
+import { flushServiceCatalogSync } from "@/lib/persistence/service-catalog-dual-write";
+import { shouldSyncToServer } from "@/lib/persistence/persist-mode";
 import { useHrWorkforceStore } from "@/stores/use-hr-workforce-store";
 import { useServiceArchitectureStore } from "@/stores/use-service-architecture-store";
 import type { SampleDataResult } from "../types";
@@ -24,7 +26,7 @@ export function clearServiceArchitectureSample(): SampleDataResult {
   return ok("clear", "Service architecture catalog cleared");
 }
 
-export function loadServiceArchitectureSample(): SampleDataResult {
+export async function loadServiceArchitectureSample(): Promise<SampleDataResult> {
   const ctx = primaryBuAndRoles();
   if (!ctx) return fail("load", "no_business_unit");
   if (ctx.roleIds.length === 0) {
@@ -37,9 +39,18 @@ export function loadServiceArchitectureSample(): SampleDataResult {
     roleIds: ctx.roleIds,
   });
   if (!seeded.ok) return fail("load", seeded.reason ?? "seed_failed");
+
+  if (shouldSyncToServer()) {
+    try {
+      await flushServiceCatalogSync();
+    } catch {
+      return fail("load", "server_sync_failed");
+    }
+  }
+
   return ok("load", `${SAMPLE_PACK_ID}: service catalog loaded`);
 }
 
-export function resetServiceArchitectureSample(): SampleDataResult {
+export async function resetServiceArchitectureSample(): Promise<SampleDataResult> {
   return loadServiceArchitectureSample();
 }

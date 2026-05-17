@@ -21,9 +21,12 @@ import { useServiceCostSimulationPrefsStore } from "@/stores/use-service-cost-si
 import { useCommercialPricingPrefsStore } from "@/stores/use-commercial-pricing-prefs-store";
 import { deriveWorkspaceProjection } from "@/lib/hr-workforce/workspace-projection";
 import { getTemplateLinkedTiers } from "@/lib/service-architecture/selectors";
-import { simulateServiceDeliveryCost } from "@/lib/service-cost-simulation/engine";
-import { buildServiceCostSimulationInput } from "@/lib/service-cost-simulation/hr-input";
+import {
+  evaluateServiceEconomics,
+  buildServiceEconomicsEvaluateInput,
+} from "@/lib/service-economics";
 import { useServiceCostCatalogSlice } from "@/hooks/use-service-cost-catalog-slice";
+import { useWorkspaceStore } from "@/stores/use-workspace-store";
 import { getScenarioPresetById } from "@/lib/service-cost-simulation/scenarios";
 import { operationalPricingBasisFromSimulation } from "@/lib/commercial-pricing-intelligence/operational-basis";
 import { runCommercialPricingIntelligence } from "@/lib/commercial-pricing-intelligence/engine";
@@ -47,6 +50,7 @@ export function CommercialPricingIntelligenceView() {
   const tiers = useServiceArchitectureStore((s) => s.serviceTiers);
   const templateTiers = useServiceArchitectureStore((s) => s.serviceTemplateTiers);
   const catalog = useServiceCostCatalogSlice();
+  const companies = useWorkspaceStore((s) => s.companies);
 
   const businessUnits = useHrWorkforceStore((s) => s.businessUnits);
   const departments = useHrWorkforceStore((s) => s.departments);
@@ -89,36 +93,54 @@ export function CommercialPricingIntelligenceView() {
     [commercialScenarioId]
   );
 
-  const costSim = useMemo(() => {
-    if (!templateId || !tierId) return null;
-    return simulateServiceDeliveryCost(
-      buildServiceCostSimulationInput({
-        catalog,
-        workforce,
-        roles,
-        serviceTemplateId: templateId,
-        serviceTierId: tierId,
-        assumptions: costAssumptions,
-        scenario: costScenario,
-      })
-    );
-  }, [catalog, workforce, roles, templateId, tierId, costAssumptions, costScenario]);
-
-  const basis = useMemo(() => {
-    if (!costSim?.ok) return null;
-    return operationalPricingBasisFromSimulation(costSim, hrGlobalSettings.defaultCurrency);
-  }, [costSim, hrGlobalSettings.defaultCurrency]);
-
-  const commercial = useMemo(() => {
-    if (!basis) return null;
-    return runCommercialPricingIntelligence({
-      basis,
+  const commercialPrefs = useMemo(
+    () => ({
       model: commercialModel,
       activeRiskIds,
       scenario: commercialScenario,
       thresholds,
-    });
-  }, [basis, commercialModel, activeRiskIds, commercialScenario, thresholds]);
+    }),
+    [commercialModel, activeRiskIds, commercialScenario, thresholds]
+  );
+
+  const economicsBase = useMemo(
+    () => ({
+      catalog,
+      workforce,
+      roles,
+      businessUnitIds: businessUnits.map((b) => b.id),
+      companies,
+      currency: hrGlobalSettings.defaultCurrency,
+      assumptions: costAssumptions,
+      scenario: costScenario,
+    }),
+    [
+      catalog,
+      workforce,
+      roles,
+      businessUnits,
+      companies,
+      hrGlobalSettings.defaultCurrency,
+      costAssumptions,
+      costScenario,
+    ]
+  );
+
+  const economics = useMemo(() => {
+    if (!templateId || !tierId) return null;
+    return evaluateServiceEconomics(
+      buildServiceEconomicsEvaluateInput(economicsBase, templateId, tierId, commercialPrefs)
+    );
+  }, [economicsBase, templateId, tierId, commercialPrefs]);
+
+  const costSim = economics?.ok ? economics.cost : economics && !economics.ok ? { ok: false as const, errors: economics.errors } : null;
+
+  const basis = useMemo(() => {
+    if (!economics?.ok) return null;
+    return operationalPricingBasisFromSimulation(economics.cost, hrGlobalSettings.defaultCurrency);
+  }, [economics, hrGlobalSettings.defaultCurrency]);
+
+  const commercial = economics?.ok ? economics.commercial ?? null : null;
 
   const linkedTiers = useMemo(() => {
     if (!templateId) return [];
@@ -126,46 +148,19 @@ export function CommercialPricingIntelligenceView() {
   }, [templateId, templateTiers, tiers]);
 
   const tierCommercialCompare = useMemo(() => {
-    if (!templateId || !costSim?.ok) return [];
+    if (!templateId || !economics?.ok) return [];
     return linkedTiers.map((tier) => {
-      const c = simulateServiceDeliveryCost(
-        buildServiceCostSimulationInput({
-          catalog,
-          workforce,
-          roles,
-          serviceTemplateId: templateId,
-          serviceTierId: tier.id,
-          assumptions: costAssumptions,
-          scenario: costScenario,
-        })
+      const r = evaluateServiceEconomics(
+        buildServiceEconomicsEvaluateInput(economicsBase, templateId, tier.id, commercialPrefs)
       );
-      if (!c.ok) return { tier, price: 0, contrib: 0 };
-      const b = operationalPricingBasisFromSimulation(c, hrGlobalSettings.defaultCurrency);
-      const p = runCommercialPricingIntelligence({
-        basis: b,
-        model: commercialModel,
-        activeRiskIds,
-        scenario: commercialScenario,
-        thresholds,
-      });
-      if (!p.ok) return { tier, price: 0, contrib: 0 };
-      return { tier, price: p.suggestedCommercialPrice, contrib: p.margins.contributionMarginPct };
+      if (!r.ok || !r.commercial?.ok) return { tier, price: 0, contrib: 0 };
+      return {
+        tier,
+        price: r.commercial.suggestedCommercialPrice,
+        contrib: r.commercial.margins.contributionMarginPct,
+      };
     });
-  }, [
-    templateId,
-    linkedTiers,
-    catalog,
-    workforce,
-    roles,
-    costAssumptions,
-    costScenario,
-    commercialModel,
-    activeRiskIds,
-    commercialScenario,
-    thresholds,
-    hrGlobalSettings.defaultCurrency,
-    costSim?.ok,
-  ]);
+  }, [templateId, linkedTiers, economicsBase, commercialPrefs, economics?.ok]);
 
   const modelStrategyCompare = useMemo(() => {
     if (!basis) return [];
@@ -194,27 +189,16 @@ export function CommercialPricingIntelligenceView() {
     for (const tpl of templates) {
       const tt = templateTiers.find((x) => x.serviceTemplateId === tpl.id);
       if (!tt) continue;
-      const c = simulateServiceDeliveryCost(
-        buildServiceCostSimulationInput({
-          catalog,
-          workforce,
-          roles,
-          serviceTemplateId: tpl.id,
-          serviceTierId: tt.serviceTierId,
-          assumptions: costAssumptions,
-          scenario: costScenario,
+      const r = evaluateServiceEconomics(
+        buildServiceEconomicsEvaluateInput(economicsBase, tpl.id, tt.serviceTierId, {
+          model: { modelId: "cost_plus", markupPct: 32 },
+          activeRiskIds: [],
+          scenario: getCommercialPricingScenarioById("neutral"),
+          thresholds,
         })
       );
-      if (!c.ok) continue;
-      const b = operationalPricingBasisFromSimulation(c, hrGlobalSettings.defaultCurrency);
-      const p = runCommercialPricingIntelligence({
-        basis: b,
-        model: { modelId: "cost_plus", markupPct: 32 },
-        activeRiskIds: [],
-        scenario: getCommercialPricingScenarioById("neutral"),
-        thresholds,
-      });
-      if (!p.ok) continue;
+      if (!r.ok || !r.commercial?.ok) continue;
+      const p = r.commercial;
       const fname = famById.get(tpl.serviceFamilyId) ?? tpl.serviceFamilyId;
       const cur = byFam.get(tpl.serviceFamilyId) ?? { name: fname, margins: [] };
       cur.margins.push(p.margins.contributionMarginPct);
@@ -227,18 +211,7 @@ export function CommercialPricingIntelligenceView() {
         v.margins.reduce((s, x) => s + x, 0) / Math.max(1, v.margins.length),
       samples: v.margins.length,
     }));
-  }, [
-    templates,
-    templateTiers,
-    catalog,
-    workforce,
-    roles,
-    costAssumptions,
-    costScenario,
-    thresholds,
-    serviceFamilies,
-    hrGlobalSettings.defaultCurrency,
-  ]);
+  }, [templates, templateTiers, economicsBase, thresholds, serviceFamilies]);
 
   const sensitivitySpread = useMemo(() => {
     if (!commercial?.ok) return 0;
@@ -287,7 +260,7 @@ export function CommercialPricingIntelligenceView() {
   };
 
   const calculatorJson = useMemo(() => {
-    if (!commercial?.ok || !costSim?.ok) return "";
+    if (!commercial?.ok || !economics?.ok) return "";
     return JSON.stringify(
       toCommercialPricingSnapshot(
         { serviceTemplateId: commercial.basis.serviceTemplateId, tierId: commercial.basis.serviceTierId },
@@ -296,7 +269,7 @@ export function CommercialPricingIntelligenceView() {
       null,
       2
     );
-  }, [commercial, costSim]);
+  }, [commercial, economics]);
 
   return (
     <div className="space-y-6">

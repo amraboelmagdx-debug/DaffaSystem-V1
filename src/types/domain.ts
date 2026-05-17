@@ -40,6 +40,12 @@ export interface DemoRevenueStream {
   id: string;
   companyId: string;
   name: string;
+  /** HR department id when stream was seeded from workforce sync. */
+  hrDepartmentId?: string | null;
+  /** Optional link to service catalog template (Option A metadata). */
+  serviceTemplateId?: string | null;
+  /** Optional link to service catalog family (Option A metadata). */
+  serviceFamilyId?: string | null;
   contributionMarginPct: number;
   revenueWeight: number;
   avgDealSize: number;

@@ -115,3 +115,94 @@ export function validateFamily(family: Partial<ServiceFamily>): ServiceValidatio
   return issues;
 }
 
+export type CatalogIntegrityHrContext = {
+  businessUnitIds: Set<string>;
+  jobRoleIds: Set<string>;
+};
+
+export type CatalogIntegrityState = {
+  serviceFamilies: ServiceFamily[];
+  serviceTiers: ServiceTier[];
+  serviceTemplates: ServiceTemplate[];
+  serviceTemplateTiers: ServiceTemplateTier[];
+  deliveryPhases: DeliveryPhase[];
+  serviceTemplateTierPhases: ServiceTemplateTierPhase[];
+  serviceDeliverables: ServiceDeliverable[];
+  serviceRoleAllocations: ServiceRoleAllocation[];
+};
+
+/** Structural + optional HR reference checks for store writes and server PUT. */
+export function assertCatalogIntegrity(
+  state: CatalogIntegrityState,
+  hr?: CatalogIntegrityHrContext
+): ServiceValidationIssue[] {
+  const issues: ServiceValidationIssue[] = [];
+  const familyIds = new Set(state.serviceFamilies.map((f) => f.id));
+  const tierIds = new Set(state.serviceTiers.map((t) => t.id));
+  const templateIds = new Set(state.serviceTemplates.map((t) => t.id));
+  const templateTierIds = new Set(state.serviceTemplateTiers.map((t) => t.id));
+  const phaseIds = new Set(state.deliveryPhases.map((p) => p.id));
+  const tierPhaseIds = new Set(state.serviceTemplateTierPhases.map((p) => p.id));
+
+  for (const tier of state.serviceTiers) {
+    issues.push(...validateTierFamilyConsistency(tier, [...familyIds]));
+  }
+
+  for (const template of state.serviceTemplates) {
+    issues.push(...validateServiceTemplate(template));
+    if (!familyIds.has(template.serviceFamilyId)) {
+      issues.push({ field: "serviceFamilyId", message: "Unknown service family" });
+    }
+    if (hr && !hr.businessUnitIds.has(template.businessUnitId)) {
+      issues.push({ field: "businessUnitId", message: "Unknown HR business unit" });
+    }
+  }
+
+  for (const link of state.serviceTemplateTiers) {
+    issues.push(
+      ...validateTemplateTierFamilyConsistency({
+        templateTier: link,
+        templates: state.serviceTemplates,
+        tiers: state.serviceTiers,
+      })
+    );
+    if (!templateIds.has(link.serviceTemplateId) || !tierIds.has(link.serviceTierId)) {
+      issues.push({ field: "serviceTemplateTier", message: "Invalid template-tier link" });
+    }
+  }
+
+  for (const tp of state.serviceTemplateTierPhases) {
+    issues.push(...validateTemplateTierPhase(tp));
+    if (!templateTierIds.has(tp.serviceTemplateTierId) || !phaseIds.has(tp.deliveryPhaseId)) {
+      issues.push({ field: "serviceTemplateTierPhase", message: "Invalid phase link" });
+    }
+  }
+
+  for (const d of state.serviceDeliverables) {
+    issues.push(...validateServiceDeliverable(d));
+    if (!tierPhaseIds.has(d.serviceTemplateTierPhaseId)) {
+      issues.push({ field: "serviceTemplateTierPhaseId", message: "Unknown template-tier phase" });
+    }
+  }
+
+  for (const a of state.serviceRoleAllocations) {
+    issues.push(...validateServiceRoleAllocation(a));
+    if (!tierPhaseIds.has(a.serviceTemplateTierPhaseId)) {
+      issues.push({ field: "serviceTemplateTierPhaseId", message: "Unknown template-tier phase" });
+    }
+    if (hr && !hr.jobRoleIds.has(a.jobRoleId)) {
+      issues.push({ field: "jobRoleId", message: "Unknown HR job role" });
+    }
+  }
+
+  return issues;
+}
+
+export function firstCatalogIntegrityError(
+  state: CatalogIntegrityState,
+  hr?: CatalogIntegrityHrContext
+): string | null {
+  const issues = assertCatalogIntegrity(state, hr);
+  return issues[0]?.message ?? null;
+}
+

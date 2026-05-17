@@ -18,6 +18,42 @@ export async function syncEconomicsGraphFromHr(): Promise<EconomicsSyncResult> {
   return body;
 }
 
+export type LinkRevenueStreamToServiceInput = {
+  streamId: string;
+  serviceTemplateId?: string | null;
+  serviceFamilyId?: string | null;
+};
+
+/** Option A: explicit metadata link from a planning stream to SA catalog (no new streams). */
+export async function linkRevenueStreamToService(
+  input: LinkRevenueStreamToServiceInput
+): Promise<{ ok: boolean; message?: string }> {
+  const res = await fetch(
+    `/api/platform/planning/revenue-streams/${encodeURIComponent(input.streamId)}/service-link`,
+    {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        serviceTemplateId: input.serviceTemplateId,
+        serviceFamilyId: input.serviceFamilyId,
+      }),
+    }
+  );
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    const message =
+      typeof body === "object" && body !== null && "error" in body
+        ? String((body as { error: unknown }).error)
+        : res.statusText;
+    return { ok: false, message };
+  }
+
+  await refreshPlanningWorkspaceFromServer();
+  return { ok: true };
+}
+
 export async function refreshPlanningWorkspaceFromServer(): Promise<boolean> {
   const res = await fetch("/api/planning/workspace", { credentials: "include", cache: "no-store" });
   if (!res.ok) return false;

@@ -5,6 +5,11 @@ import {
   HR_HYDRATION_IDLE,
   hydrateHrCatalogFromServer,
 } from "@/lib/persistence/hydrate-hr-catalog";
+import {
+  type ServiceHydrationResult,
+  SERVICE_HYDRATION_IDLE,
+  hydrateServiceCatalogFromServer,
+} from "@/lib/persistence/hydrate-service-catalog";
 import { migrateLegacyPersistForOrganization } from "@/lib/persistence/legacy-persist-migrate";
 import { purgeLegacyHrPersistenceRemnants } from "@/lib/persistence/purge-legacy-hr-persistence";
 import { clearInMemoryEconomicsBleed } from "@/lib/persistence/reset-economics-stores";
@@ -14,6 +19,7 @@ import { useServiceArchitectureStore } from "@/stores/use-service-architecture-s
 
 export type EconomicsHydrationResult = {
   hr: HrHydrationResult;
+  sa: ServiceHydrationResult;
 };
 
 async function rehydratePersistedStores(): Promise<void> {
@@ -23,10 +29,7 @@ async function rehydratePersistedStores(): Promise<void> {
   ]);
 }
 
-/**
- * Prepare HR + Service Architecture stores for the active organization.
- * SA: namespaced local only (server hydrate in 2.3).
- */
+/** Prepare HR + Service Architecture stores for the active organization. */
 export async function prepareEconomicsStoresForOrganization(
   organizationId: string
 ): Promise<EconomicsHydrationResult> {
@@ -41,6 +44,8 @@ export async function prepareEconomicsStoresForOrganization(
 
   const hr = await hydrateHrCatalogFromServer(organizationId);
 
+  const sa = await hydrateServiceCatalogFromServer(organizationId);
+
   const hasHrStructure = useHrWorkforceStore.getState().businessUnits.some((b) => b.isActive);
   if (hasHrStructure) {
     try {
@@ -54,7 +59,7 @@ export async function prepareEconomicsStoresForOrganization(
     }
   }
 
-  return { hr };
+  return { hr, sa };
 }
 
-export { HR_HYDRATION_IDLE };
+export { HR_HYDRATION_IDLE, SERVICE_HYDRATION_IDLE };

@@ -2,9 +2,16 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { newServiceId } from "@/lib/service-architecture/id";
 import { makeServiceArchitectureDemoSeed } from "@/lib/service-architecture/demo-seed";
-import { validateTemplateTierFamilyConsistency } from "@/lib/service-architecture/validation";
-import { createTenantScopedStorage } from "@/lib/persistence/tenant-storage";
-import { SERVICE_ARCHITECTURE_BASE_KEY } from "@/lib/persistence/persist-keys";
+import {
+  firstCatalogIntegrityError,
+  validateServiceRoleAllocation,
+  validateServiceTemplate,
+  validateTemplateTierFamilyConsistency,
+  type CatalogIntegrityHrContext,
+  type CatalogIntegrityState,
+} from "@/lib/service-architecture/validation";
+import { useHrWorkforceStore } from "@/stores/use-hr-workforce-store";
+import { createServiceCatalogTenantStorage } from "@/lib/persistence/service-catalog-storage";
 import type {
   DeliveryPhase,
   ServiceDeliverable,
@@ -34,6 +41,18 @@ type CatalogEntity =
   | ServiceTemplateTierPhase
   | ServiceDeliverable
   | ServiceRoleAllocation;
+
+function hrIntegrityContext(): CatalogIntegrityHrContext {
+  const hr = useHrWorkforceStore.getState();
+  return {
+    businessUnitIds: new Set(hr.businessUnits.map((b) => b.id)),
+    jobRoleIds: new Set(hr.roles.map((r) => r.id)),
+  };
+}
+
+function integrityErrorForNext(next: CatalogIntegrityState): string | null {
+  return firstCatalogIntegrityError(next, hrIntegrityContext());
+}
 
 function bumpEntityMeta<T extends CatalogEntity>(entity: T): T {
   return {
@@ -67,7 +86,7 @@ interface ServiceArchitectureState extends ServiceArchitectureCatalogState {
     name: string;
     code: string;
     description?: string;
-  }) => void;
+  }) => { ok: boolean; reason?: string };
   updateServiceTemplate: (id: string, patch: Partial<ServiceTemplate>) => void;
 
   addServiceTemplateTier: (input: { serviceTemplateId: string; serviceTierId: string }) => { ok: boolean; reason?: string };
@@ -98,7 +117,7 @@ interface ServiceArchitectureState extends ServiceArchitectureCatalogState {
     jobRoleId: string;
     allocatedHours: number;
     notes?: string;
-  }) => void;
+  }) => { ok: boolean; reason?: string };
   updateServiceRoleAllocation: (id: string, patch: Partial<ServiceRoleAllocation>) => void;
   removeServiceRoleAllocation: (id: string) => void;
 
@@ -200,27 +219,40 @@ export const useServiceArchitectureStore = create<ServiceArchitectureState>()(
           ),
         })),
 
-      addServiceTemplate: (input) =>
-        set((state) => ({
-          serviceTemplates: [
-            ...state.serviceTemplates,
-            {
-              id: newServiceId("svc_template"),
-              serviceFamilyId: input.serviceFamilyId,
-              businessUnitId: input.businessUnitId,
-              name: input.name.trim() || "Service template",
-              code: input.code.trim().toUpperCase(),
-              description: input.description?.trim() || "",
-              ...nextMeta(),
-            },
-          ],
-        })),
-      updateServiceTemplate: (id, patch) =>
-        set((state) => ({
+      addServiceTemplate: (input) => {
+        const state = get();
+        const draft = {
+          id: newServiceId("svc_template"),
+          serviceFamilyId: input.serviceFamilyId,
+          businessUnitId: input.businessUnitId,
+          name: input.name.trim() || "Service template",
+          code: input.code.trim().toUpperCase(),
+          description: input.description?.trim() || "",
+          ...nextMeta(),
+        };
+        const fieldIssues = validateServiceTemplate(draft);
+        if (fieldIssues.length > 0) return { ok: false, reason: fieldIssues[0]?.message };
+        const next: CatalogIntegrityState = {
+          ...state,
+          serviceTemplates: [...state.serviceTemplates, draft],
+        };
+        const err = integrityErrorForNext(next);
+        if (err) return { ok: false, reason: err };
+        set({ serviceTemplates: next.serviceTemplates });
+        return { ok: true };
+      },
+      updateServiceTemplate: (id, patch) => {
+        const state = get();
+        const next: CatalogIntegrityState = {
+          ...state,
           serviceTemplates: state.serviceTemplates.map((it) =>
             it.id === id ? bumpEntityMeta({ ...it, ...patch }) : it
           ),
-        })),
+        };
+        const err = integrityErrorForNext(next);
+        if (err) return;
+        set({ serviceTemplates: next.serviceTemplates });
+      },
 
       addServiceTemplateTier: (input) => {
         const state = get();
@@ -339,26 +371,39 @@ export const useServiceArchitectureStore = create<ServiceArchitectureState>()(
           serviceDeliverables: state.serviceDeliverables.filter((it) => it.id !== id),
         })),
 
-      addServiceRoleAllocation: (input) =>
-        set((state) => ({
-          serviceRoleAllocations: [
-            ...state.serviceRoleAllocations,
-            {
-              id: newServiceId("svc_alloc"),
-              serviceTemplateTierPhaseId: input.serviceTemplateTierPhaseId,
-              jobRoleId: input.jobRoleId,
-              allocatedHours: Math.max(0, Number(input.allocatedHours || 0)),
-              notes: input.notes || "",
-              ...nextMeta(),
-            },
-          ],
-        })),
-      updateServiceRoleAllocation: (id, patch) =>
-        set((state) => ({
+      addServiceRoleAllocation: (input) => {
+        const state = get();
+        const draft = {
+          id: newServiceId("svc_alloc"),
+          serviceTemplateTierPhaseId: input.serviceTemplateTierPhaseId,
+          jobRoleId: input.jobRoleId,
+          allocatedHours: Math.max(0, Number(input.allocatedHours || 0)),
+          notes: input.notes || "",
+          ...nextMeta(),
+        };
+        const fieldIssues = validateServiceRoleAllocation(draft);
+        if (fieldIssues.length > 0) return { ok: false, reason: fieldIssues[0]?.message };
+        const next: CatalogIntegrityState = {
+          ...state,
+          serviceRoleAllocations: [...state.serviceRoleAllocations, draft],
+        };
+        const err = integrityErrorForNext(next);
+        if (err) return { ok: false, reason: err };
+        set({ serviceRoleAllocations: next.serviceRoleAllocations });
+        return { ok: true };
+      },
+      updateServiceRoleAllocation: (id, patch) => {
+        const state = get();
+        const next: CatalogIntegrityState = {
+          ...state,
           serviceRoleAllocations: state.serviceRoleAllocations.map((it) =>
             it.id === id ? bumpEntityMeta({ ...it, ...patch }) : it
           ),
-        })),
+        };
+        const err = integrityErrorForNext(next);
+        if (err) return;
+        set({ serviceRoleAllocations: next.serviceRoleAllocations });
+      },
       removeServiceRoleAllocation: (id) =>
         set((state) => ({
           serviceRoleAllocations: state.serviceRoleAllocations.filter((it) => it.id !== id),
@@ -401,7 +446,8 @@ export const useServiceArchitectureStore = create<ServiceArchitectureState>()(
     }),
     {
       name: "efp-service-architecture-v1",
-      storage: createJSONStorage(() => createTenantScopedStorage(SERVICE_ARCHITECTURE_BASE_KEY)),
+      storage: createJSONStorage(() => createServiceCatalogTenantStorage()),
+      skipHydration: true,
       merge: (persisted, current) => {
         if (!persisted || typeof persisted !== "object") return current;
         const normalized = normalizeCatalogState(persisted as Partial<ServiceArchitectureCatalogState>);
@@ -420,4 +466,13 @@ export const useServiceArchitectureStore = create<ServiceArchitectureState>()(
     }
   )
 );
+
+export function mergeServiceArchitectureCatalogIntoState(
+  persisted: Partial<ServiceArchitectureCatalogState>
+): void {
+  useServiceArchitectureStore.setState((current) => {
+    const normalized = normalizeCatalogState(persisted);
+    return { ...current, ...normalized };
+  });
+}
 

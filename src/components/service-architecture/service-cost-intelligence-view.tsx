@@ -19,9 +19,9 @@ import { useHrWorkforceStore } from "@/stores/use-hr-workforce-store";
 import { useServiceCostSimulationPrefsStore } from "@/stores/use-service-cost-simulation-prefs-store";
 import { deriveWorkspaceProjection } from "@/lib/hr-workforce/workspace-projection";
 import { getTemplateLinkedTiers } from "@/lib/service-architecture/selectors";
-import { simulateServiceDeliveryCost } from "@/lib/service-cost-simulation/engine";
-import { buildServiceCostSimulationInput } from "@/lib/service-cost-simulation/hr-input";
+import { evaluateServiceEconomics, buildServiceEconomicsEvaluateInput } from "@/lib/service-economics";
 import { useServiceCostCatalogSlice } from "@/hooks/use-service-cost-catalog-slice";
+import { useWorkspaceStore } from "@/stores/use-workspace-store";
 import { getScenarioPresetById, SERVICE_COST_SCENARIO_PRESETS } from "@/lib/service-cost-simulation/scenarios";
 import { toServiceCostBaselineSnapshot } from "@/lib/service-cost-simulation/sales-plan-cost-adapter";
 import { exportAssumptionsToImportRows, buildServiceCostAssumptionImportPreview } from "@/lib/service-cost-simulation/cost-assumption-import";
@@ -51,6 +51,7 @@ export function ServiceCostIntelligenceView() {
   const resetAssumptions = useServiceCostSimulationPrefsStore((s) => s.resetAssumptions);
 
   const catalog = useServiceCostCatalogSlice();
+  const companies = useWorkspaceStore((s) => s.companies);
 
   const [templateId, setTemplateId] = useState("");
   const [tierId, setTierId] = useState("");
@@ -71,19 +72,28 @@ export function ServiceCostIntelligenceView() {
 
   const scenario = useMemo(() => getScenarioPresetById(scenarioId), [scenarioId]);
 
-  const simulation = useMemo(() => {
-    if (!templateId || !tierId) return null;
-    const input = buildServiceCostSimulationInput({
+  const economicsBase = useMemo(
+    () => ({
       catalog,
       workforce,
       roles,
-      serviceTemplateId: templateId,
-      serviceTierId: tierId,
+      businessUnitIds: businessUnits.map((b) => b.id),
+      companies,
+      currency: hrGlobalSettings.defaultCurrency,
       assumptions,
       scenario,
-    });
-    return simulateServiceDeliveryCost(input);
-  }, [catalog, workforce, roles, templateId, tierId, assumptions, scenario]);
+    }),
+    [catalog, workforce, roles, businessUnits, companies, hrGlobalSettings.defaultCurrency, assumptions, scenario]
+  );
+
+  const simulation = useMemo(() => {
+    if (!templateId || !tierId) return null;
+    const result = evaluateServiceEconomics(
+      buildServiceEconomicsEvaluateInput(economicsBase, templateId, tierId)
+    );
+    if (result.ok) return result.cost;
+    return { ok: false as const, errors: result.errors };
+  }, [economicsBase, templateId, tierId]);
 
   const baselineJson = useMemo(() => {
     if (!simulation?.ok) return "";
@@ -106,27 +116,20 @@ export function ServiceCostIntelligenceView() {
     if (!templateId || linkedTiers.length === 0) return [];
     return linkedTiers
       .map((tier) => {
-        const input = buildServiceCostSimulationInput({
-          catalog,
-          workforce,
-          roles,
-          serviceTemplateId: templateId,
-          serviceTierId: tier.id,
-          assumptions,
-          scenario,
-        });
-        const r = simulateServiceDeliveryCost(input);
+        const r = evaluateServiceEconomics(
+          buildServiceEconomicsEvaluateInput(economicsBase, templateId, tier.id)
+        );
         if (!r.ok) return { tier, loaded: 0, hours: 0, direct: 0, oh: 0 };
         return {
           tier,
-          loaded: r.totals.totalLoadedCost,
-          hours: r.totals.totalEffectiveHours,
-          direct: r.totals.totalDirectCost,
-          oh: r.totals.totalOhContribution,
+          loaded: r.cost.totals.totalLoadedCost,
+          hours: r.cost.totals.totalEffectiveHours,
+          direct: r.cost.totals.totalDirectCost,
+          oh: r.cost.totals.totalOhContribution,
         };
       })
       .sort((a, b) => a.tier.name.localeCompare(b.tier.name));
-  }, [templateId, linkedTiers, catalog, workforce, roles, assumptions, scenario]);
+  }, [templateId, linkedTiers, economicsBase]);
 
   const topPhases = useMemo(() => {
     if (!simulation?.ok) return [];

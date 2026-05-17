@@ -16,6 +16,7 @@
     "supabase:status": "npx supabase status",
     "verify:hr-persist": "node scripts/verify-hr-catalog-persistence.mjs",
     "verify:hr-api": "node scripts/verify-hr-catalog-api.mjs http://localhost:3001",
+    "verify:service-catalog-api": "node scripts/verify-service-catalog-api.mjs http://localhost:3001",
     "cleanup:hr-legacy": "node scripts/cleanup-hr-legacy-persist.mjs",
     "cleanup:platform-data": "node scripts/cleanup-platform-data.mjs http://localhost:3001",
     "verify:hr-e2e": "node scripts/verify-hr-catalog-e2e.mjs http://localhost:3001",
