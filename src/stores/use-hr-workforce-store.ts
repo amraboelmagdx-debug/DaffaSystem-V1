@@ -14,7 +14,7 @@ import { DEFAULT_OH } from "@/lib/hr-workforce/default-oh";
 import { migrateRoleOperationalType } from "@/lib/hr-workforce/role-operational-type";
 import { nowIso } from "@/lib/hr-workforce/structure-utils";
 import { seedDemoWorkforceIfEmpty, type DemoWorkforceSeedResult } from "@/lib/hr-workforce/demo-workforce-seed";
-import { getHrWorkforceHybridStateStorage } from "@/lib/hr-workforce/hr-workforce-hybrid-persist-storage";
+import { createHrCatalogTenantStorage } from "@/lib/persistence/hr-catalog-storage";
 import {
   DEFAULT_HR_SETTINGS,
   type LegacyHrGlobal,
@@ -161,6 +161,43 @@ function normalizePersistedState(p: Partial<HrWorkforceState> | undefined): Part
     roles,
     hrGlobalSettings,
     ohManualByBusinessUnitId,
+  };
+}
+
+/** Shared merge for Zustand rehydrate and server catalog hydrate (2.1). */
+export function mergePersistedHrCatalog(
+  persisted: Partial<HrWorkforceState> | null | undefined,
+  current: HrWorkforceState
+): HrWorkforceState {
+  if (persisted == null || typeof persisted !== "object") return current;
+  const p = normalizePersistedState(persisted);
+  return {
+    ...current,
+    ...p,
+    businessUnits:
+      Array.isArray(p.businessUnits) && p.businessUnits.length > 0
+        ? p.businessUnits
+        : current.businessUnits,
+    departments:
+      Array.isArray(p.departments) && p.departments.length > 0
+        ? p.departments
+        : current.departments,
+    teams: Array.isArray(p.teams) ? p.teams : current.teams,
+    roles: Array.isArray(p.roles) ? p.roles : current.roles,
+    hrGlobalSettings: migratedHrGlobalSettings(
+      (p.hrGlobalSettings ?? current.hrGlobalSettings) as LegacyHrGlobal
+    ),
+    ohManualByBusinessUnitId:
+      p.ohManualByBusinessUnitId ??
+      resolveOhManualMapForUnits(
+        Array.isArray(p.businessUnits) && p.businessUnits.length > 0
+          ? p.businessUnits
+          : current.businessUnits,
+        {},
+        (p.hrGlobalSettings ?? current.hrGlobalSettings) as LegacyHrGlobal
+      ),
+    importLogs: Array.isArray(p.importLogs) ? p.importLogs : current.importLogs,
+    snapshots: Array.isArray(p.snapshots) ? p.snapshots : current.snapshots,
   };
 }
 
@@ -377,8 +414,21 @@ export const useHrWorkforceStore = create<HrWorkforceState>()(
         set({ roles: get().roles.filter((r) => !idSet.has(r.id)) });
       },
 
-      applyImportDeltas: (deltas) =>
+      applyImportDeltas: (deltas, options) =>
         set((s) => {
+          if (options?.replace) {
+            const nextOh: typeof s.ohManualByBusinessUnitId = {};
+            for (const u of deltas.businessUnits) {
+              nextOh[u.id] = s.ohManualByBusinessUnitId[u.id] ?? { ...DEFAULT_OH };
+            }
+            return {
+              businessUnits: deltas.businessUnits,
+              departments: deltas.departments,
+              teams: deltas.teams,
+              roles: deltas.roles,
+              ohManualByBusinessUnitId: nextOh,
+            };
+          }
           const nextOh = { ...s.ohManualByBusinessUnitId };
           for (const u of deltas.businessUnits) {
             if (!nextOh[u.id]) nextOh[u.id] = { ...DEFAULT_OH };
@@ -431,39 +481,11 @@ export const useHrWorkforceStore = create<HrWorkforceState>()(
     }),
     {
       name: "efp-hr-workforce",
-      storage: createJSONStorage(getHrWorkforceHybridStateStorage),
-      merge: (persisted, current) => {
-        if (persisted == null || typeof persisted !== "object") return current;
-        const p = normalizePersistedState(persisted as Partial<HrWorkforceState>);
-        return {
-          ...current,
-          ...p,
-          businessUnits:
-            Array.isArray(p.businessUnits) && p.businessUnits.length > 0
-              ? p.businessUnits
-              : current.businessUnits,
-          departments:
-            Array.isArray(p.departments) && p.departments.length > 0
-              ? p.departments
-              : current.departments,
-          teams: Array.isArray(p.teams) ? p.teams : current.teams,
-          roles: Array.isArray(p.roles) ? p.roles : current.roles,
-          hrGlobalSettings: migratedHrGlobalSettings(
-            (p.hrGlobalSettings ?? current.hrGlobalSettings) as LegacyHrGlobal
-          ),
-          ohManualByBusinessUnitId:
-            p.ohManualByBusinessUnitId ??
-            resolveOhManualMapForUnits(
-              Array.isArray(p.businessUnits) && p.businessUnits.length > 0
-                ? p.businessUnits
-                : current.businessUnits,
-              {},
-              (p.hrGlobalSettings ?? current.hrGlobalSettings) as LegacyHrGlobal
-            ),
-          importLogs: Array.isArray(p.importLogs) ? p.importLogs : current.importLogs,
-          snapshots: Array.isArray(p.snapshots) ? p.snapshots : current.snapshots,
-        };
-      },
+      storage: createJSONStorage(() => createHrCatalogTenantStorage()),
+      /** Rehydrate only after `setActiveOrganizationId` in tenant persistence (avoids legacy key). */
+      skipHydration: true,
+      merge: (persisted, current) =>
+        mergePersistedHrCatalog(persisted as Partial<HrWorkforceState>, current),
       partialize: (s) => ({
         businessUnits: s.businessUnits,
         departments: s.departments,
@@ -477,6 +499,10 @@ export const useHrWorkforceStore = create<HrWorkforceState>()(
     }
   )
 );
+
+export function mergeHrPersistedCatalogIntoState(persisted: Partial<HrWorkforceState>): void {
+  useHrWorkforceStore.setState((current) => mergePersistedHrCatalog(persisted, current));
+}
 
 export { DEFAULT_OH } from "@/lib/hr-workforce/default-oh";
 export { DEFAULT_HR_SETTINGS } from "@/lib/hr-workforce/hr-workforce-persist-migrate";

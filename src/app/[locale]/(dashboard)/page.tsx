@@ -32,6 +32,7 @@ import {
 } from "@/lib/calculations/engine";
 import { evaluateExecutiveWorkspaceMeasures } from "@/lib/planning/measures";
 import { InsightBulb } from "@/components/planning/insight-bulb";
+import { SampleDataPanel } from "@/components/sample-data/sample-data-panel";
 import {
   scenariosForCompany,
   streamsForCompany,
@@ -55,44 +56,62 @@ export default function ExecutiveDashboardPage() {
   } = useWorkspaceStore();
 
   const company = companies.find((c) => c.id === selectedCompanyId) ?? companies[0];
-  const scenarios = scenariosForCompany(company.id);
+  const scenarios = company ? scenariosForCompany(company.id) : [];
   const scenario =
     scenarios.find((s) => s.id === selectedScenarioId) ?? scenarios[0];
-  const streams = streamsForCompany(company.id);
+  const streams = company ? streamsForCompany(company.id) : [];
 
   const measures = useMemo(
     () =>
-      evaluateExecutiveWorkspaceMeasures({
-        company,
-        streams,
-        opportunities,
-        scenarios,
-        activeScenarioId: scenario.id,
-        tierLineOverrides,
-      }),
-    [company, streams, opportunities, scenarios, scenario.id, tierLineOverrides]
+      company && scenario
+        ? evaluateExecutiveWorkspaceMeasures({
+            company,
+            streams,
+            opportunities,
+            scenarios,
+            activeScenarioId: scenario.id,
+            tierLineOverrides,
+          })
+        : null,
+    [company, streams, opportunities, scenarios, scenario, tierLineOverrides]
   );
 
-  const {
-    baseEngine,
-    activeEngine: scenarioEngine,
-    workbook: { workbookTargets },
-    pipeline: { health, coverage },
-    weightedPipeline,
-    scenarioCompare,
-    forecastAchievementVsPlanProxy: forecastAchievement,
-    blendedStreamCmPct,
-  } = measures;
+  const baseEngine = measures?.baseEngine;
+  const scenarioEngine = measures?.activeEngine;
+  const workbookTargets = measures?.workbook.workbookTargets;
+  const health = measures?.pipeline.health;
+  const coverage = measures?.pipeline.coverage;
+  const weightedPipeline = measures?.weightedPipeline;
+  const scenarioCompare = measures?.scenarioCompare;
+  const forecastAchievement = measures?.forecastAchievementVsPlanProxy;
+  const blendedStreamCmPct = measures?.blendedStreamCmPct;
 
-  const forecastSeries = useMemo(() => buildDemoForecastSeries(company), [company]);
+  const forecastSeries = useMemo(
+    () => (company ? buildDemoForecastSeries(company) : []),
+    [company]
+  );
 
   const workbookSalesLabel =
-    Number.isFinite(workbookTargets.salesTarget) && workbookTargets.salesTarget < 1e14
+    workbookTargets &&
+    Number.isFinite(workbookTargets.salesTarget) &&
+    workbookTargets.salesTarget < 1e14
       ? fmt(workbookTargets.salesTarget)
       : tp("unboundedSales");
 
+  if (!company || !measures || !scenario) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-4">
+        <SampleDataPanel moduleId="workspace" />
+        <p className="text-center text-sm text-muted-foreground">
+          No companies in the workspace. Load sample data to open the executive dashboard.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-7xl space-y-8">
+      <SampleDataPanel moduleId="workspace" />
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">

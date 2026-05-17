@@ -15,6 +15,7 @@ export const IMPORT_SESSION_INITIAL = {
   importSessionErrors: [] as string[],
   importSessionPlan: null as ImportPlanResult | null,
   importSessionLastDryRunAt: null as string | null,
+  importSessionReplaceExisting: true,
 };
 
 export function getImportSliceResetPayload(): Pick<
@@ -44,6 +45,8 @@ export type HrImportSlice = Pick<
   | "importSessionErrors"
   | "importSessionPlan"
   | "importSessionLastDryRunAt"
+  | "importSessionReplaceExisting"
+  | "importSessionSetReplaceExisting"
   | "pushImportLog"
   | "deleteImportLog"
   | "clearAllImportLogs"
@@ -93,17 +96,21 @@ export const createHrImportSlice: StateCreator<HrWorkforceState, [], [], HrImpor
       },
     })),
 
+  importSessionSetReplaceExisting: (replace) => set({ importSessionReplaceExisting: replace }),
+
   importSessionRunDryRun: () => {
     const s = get();
+    const replace = s.importSessionReplaceExisting;
     const result = buildImportPlan(
       {
-        businessUnits: s.businessUnits,
-        departments: s.departments,
-        teams: s.teams,
+        businessUnits: replace ? [] : s.businessUnits,
+        departments: replace ? [] : s.departments,
+        teams: replace ? [] : s.teams,
         defaultCurrency: s.hrGlobalSettings.defaultCurrency,
       },
       s.importSessionRows,
-      s.importSessionColumnMap
+      s.importSessionColumnMap,
+      { replaceExisting: replace }
     );
     const t = new Date().toISOString();
     if (!result.ok) {

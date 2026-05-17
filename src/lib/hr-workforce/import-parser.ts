@@ -155,25 +155,112 @@ export function mapRowToJobRole(p: MapRowToRoleParams): JobRole | null {
   return role;
 }
 
-export function guessColumnMap(headers: string[]): Partial<Record<ImportColumnKey, string>> {
-  const norm = (h: string) => h.trim().toLowerCase();
-  const find = (candidates: string[]) => headers.find((h) => candidates.includes(norm(h)));
+function normalizeHeader(h: string): string {
+  return h.trim().toLowerCase().replace(/\s+/g, " ");
+}
 
+type HeaderMatchRule = {
+  exact?: string[];
+  includes?: string[];
+  excludes?: string[];
+};
+
+/** Picks the best sheet column for a logical import field (exact match, then substring). */
+export function matchImportHeader(
+  headers: string[],
+  rule: HeaderMatchRule
+): string | undefined {
+  let best: { header: string; score: number } | null = null;
+  for (const header of headers) {
+    const n = normalizeHeader(header);
+    if (rule.excludes?.some((ex) => n.includes(ex))) continue;
+    let score = 0;
+    for (const e of rule.exact ?? []) {
+      if (n === e) score = Math.max(score, 100);
+    }
+    for (const inc of rule.includes ?? []) {
+      if (n.includes(inc)) score = Math.max(score, 60);
+    }
+    if (score > 0 && (!best || score > best.score)) best = { header, score };
+  }
+  return best?.header;
+}
+
+export function guessColumnMap(headers: string[]): Partial<Record<ImportColumnKey, string>> {
   return {
-    businessUnit: find(["business unit", "bu", "company", "portfolio", "unit"]),
-    department: find(["department", "dept"]),
-    team: find(["team"]),
-    roleName: find(["role name", "role", "job role", "title"]),
-    employmentType: find(["employment type", "type"]),
-    employeeCount: find(["employee count", "headcount", "count", "employees"]),
-    monthlySalary: find(["monthly salary", "salary"]),
-    monthlySocialInsurance: find(["monthly social insurance", "social insurance", "si"]),
-    annualMedicalInsurance: find(["annual medical insurance", "medical"]),
-    annualEosCost: find(["annual eos", "eos", "end of service"]),
-    riskFactorPct: find(["risk factor", "risk %", "risk"]),
-    isBillable: find(["is billable", "billable"]),
-    additionalCosts: find(["additional costs", "extras"]),
+    businessUnit: matchImportHeader(headers, {
+      exact: ["business unit", "bu", "company", "portfolio", "unit", "legal entity"],
+      includes: ["business unit", "company", "portfolio"],
+    }),
+    department: matchImportHeader(headers, {
+      exact: ["department", "dept"],
+      includes: ["department", "dept"],
+    }),
+    team: matchImportHeader(headers, {
+      exact: ["team", "squad", "group"],
+      includes: ["team"],
+      excludes: ["steam"],
+    }),
+    roleName: matchImportHeader(headers, {
+      exact: ["role name", "role", "job role", "title", "position"],
+      includes: ["role name", "job role", "position"],
+      excludes: ["employment"],
+    }),
+    employmentType: matchImportHeader(headers, {
+      exact: ["employment type", "employment", "contract type"],
+      includes: ["employment type", "employment"],
+    }),
+    employeeCount: matchImportHeader(headers, {
+      exact: ["employee count", "headcount", "employees", "fte", "count"],
+      includes: ["headcount", "employee count", "fte"],
+    }),
+    monthlySalary: matchImportHeader(headers, {
+      exact: ["monthly salary", "salary", "basic salary", "base salary"],
+      includes: ["monthly salary", "salary"],
+      excludes: ["social", "insurance"],
+    }),
+    monthlySocialInsurance: matchImportHeader(headers, {
+      exact: ["monthly social insurance", "social insurance", "si", "gosi"],
+      includes: ["social insurance", "gosi"],
+    }),
+    annualMedicalInsurance: matchImportHeader(headers, {
+      exact: ["annual medical insurance", "medical insurance", "medical"],
+      includes: ["medical"],
+    }),
+    annualEosCost: matchImportHeader(headers, {
+      exact: ["annual eos cost", "annual eos", "eos cost", "eos", "end of service", "gratuity"],
+      includes: ["eos", "end of service", "gratuity"],
+    }),
+    riskFactorPct: matchImportHeader(headers, {
+      exact: ["risk factor %", "risk factor", "risk %", "risk pct"],
+      includes: ["risk factor", "risk %"],
+      excludes: ["additional"],
+    }),
+    isBillable: matchImportHeader(headers, {
+      exact: ["is billable", "billable", "billable role"],
+      includes: ["billable"],
+    }),
+    additionalCosts: matchImportHeader(headers, {
+      exact: ["additional costs", "extras", "other costs"],
+      includes: ["additional cost", "additional costs"],
+    }),
   };
+}
+
+/** Fields that must be mapped for compensation import to be trustworthy. */
+export const IMPORT_COMPENSATION_KEYS: ImportColumnKey[] = [
+  "monthlySalary",
+  "monthlySocialInsurance",
+  "annualMedicalInsurance",
+  "annualEosCost",
+  "riskFactorPct",
+  "additionalCosts",
+];
+
+export function listUnmappedImportKeys(
+  columnMap: Partial<Record<ImportColumnKey, string>>
+): ImportColumnKey[] {
+  return IMPORT_COMPENSATION_KEYS.filter((k) => !columnMap[k]);
 }
 
 export { validateJobRole };

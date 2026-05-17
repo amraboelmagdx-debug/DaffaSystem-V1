@@ -13,6 +13,11 @@ export type PlanningWorkspaceDTO = {
     margin_target_pct: number;
     np_target_pct: number;
     market_segments: unknown;
+    metadata?: unknown;
+  }>;
+  company_hr_links: Array<{
+    company_id: string;
+    hr_business_unit_id: string;
   }>;
   revenue_streams: Array<Record<string, unknown>>;
   scenarios: Array<Record<string, unknown>>;
@@ -24,24 +29,27 @@ export type PlanningWorkspaceDTO = {
   deal_tier_lines: Array<Record<string, unknown>>;
 };
 
-export async function loadPlanningWorkspace(): Promise<
-  PlanningWorkspaceDTO | { source: "none"; message: string }
-> {
+export async function loadPlanningWorkspace(
+  organizationId: string
+): Promise<PlanningWorkspaceDTO | { source: "none"; message: string }> {
   const supabase = await createRouteSupabaseClient();
   if (!supabase) {
     return { source: "none", message: "Supabase is not configured." };
   }
 
-  const { data: orgs, error: orgErr } = await supabase
+  const { data: organization, error: orgErr } = await supabase
     .from("organizations")
     .select("id,name")
-    .limit(5);
+    .eq("id", organizationId)
+    .maybeSingle();
   if (orgErr) {
     return { source: "none", message: orgErr.message };
   }
-  const organization = orgs?.[0] ?? null;
   if (!organization) {
-    return { source: "none", message: "No organization found for this user." };
+    return {
+      source: "none",
+      message: "Organization not found or access denied.",
+    };
   }
 
   const orgId = organization.id;
@@ -68,8 +76,14 @@ export async function loadPlanningWorkspace(): Promise<
       planning_rows: [],
       planning_cells: [],
       deal_tier_lines: [],
+      company_hr_links: [],
     };
   }
+
+  const { data: hrLinks } = await supabase
+    .from("company_hr_unit_links")
+    .select("company_id, hr_business_unit_id")
+    .eq("organization_id", orgId);
 
   const [streamsRes, scenariosRes, oppsRes, forecastsRes, rowsRes] =
     await Promise.all([
@@ -105,6 +119,7 @@ export async function loadPlanningWorkspace(): Promise<
     source: "supabase",
     organization,
     companies: (companies ?? []) as PlanningWorkspaceDTO["companies"],
+    company_hr_links: (hrLinks ?? []) as PlanningWorkspaceDTO["company_hr_links"],
     revenue_streams: streamsData,
     scenarios: scenariosRes.data ?? [],
     opportunities: oppsRes.data ?? [],

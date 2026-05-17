@@ -27,6 +27,7 @@ import { toServiceCostBaselineSnapshot } from "@/lib/service-cost-simulation/sal
 import { exportAssumptionsToImportRows, buildServiceCostAssumptionImportPreview } from "@/lib/service-cost-simulation/cost-assumption-import";
 import { DEFAULT_SERVICE_COST_ASSUMPTIONS } from "@/lib/service-cost-simulation/defaults";
 import { Badge } from "@/components/ui/badge";
+import { SampleDataPanel } from "@/components/sample-data/sample-data-panel";
 
 export function ServiceCostIntelligenceView() {
   const t = useTranslations("serviceArchitecture");
@@ -143,6 +144,7 @@ export function ServiceCostIntelligenceView() {
 
   return (
     <div className="space-y-6">
+      <SampleDataPanel moduleId="service-cost-simulation-prefs" />
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{t("costIntelTitle")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{t("costIntelSubtitle")}</p>

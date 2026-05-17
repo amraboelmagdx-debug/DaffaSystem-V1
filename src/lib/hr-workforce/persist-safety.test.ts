@@ -35,10 +35,20 @@ describe("persist-safety", () => {
     expect(isHrWorkforceDiskApiAllowedOnServer()).toBe(true);
   });
 
-  it("hybrid client mirror only in development bundle", async () => {
-    process.env = { ...env, NODE_ENV: "development" };
+  it("hybrid client mirror in development when legacy global persist keys are used", async () => {
+    process.env = {
+      ...env,
+      NODE_ENV: "development",
+      NEXT_PUBLIC_TENANT_NAMESPACED_PERSIST: "false",
+    };
     const { isHrWorkforceHybridDiskMirrorEnabledOnClient } = await import("./persist-safety");
     expect(isHrWorkforceHybridDiskMirrorEnabledOnClient()).toBe(true);
+  });
+
+  it("hybrid client mirror off when tenant namespaced persist is enabled", async () => {
+    process.env = { ...env, NODE_ENV: "development" };
+    const { isHrWorkforceHybridDiskMirrorEnabledOnClient } = await import("./persist-safety");
+    expect(isHrWorkforceHybridDiskMirrorEnabledOnClient()).toBe(false);
   });
 
   it("hybrid client mirror off in production bundle", async () => {

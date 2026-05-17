@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { InsightBulb } from "@/components/planning/insight-bulb";
+import { SampleDataPanel } from "@/components/sample-data/sample-data-panel";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useServiceArchitectureStore } from "@/stores/use-service-architecture-store";
-import { useHrWorkforceStore } from "@/stores/use-hr-workforce-store";
 
 export function ServiceFamiliesView() {
   const t = useTranslations("serviceArchitecture");
@@ -22,19 +21,11 @@ export function ServiceFamiliesView() {
   const serviceTiers = useServiceArchitectureStore((s) => s.serviceTiers);
   const addServiceFamily = useServiceArchitectureStore((s) => s.addServiceFamily);
   const addServiceTier = useServiceArchitectureStore((s) => s.addServiceTier);
-  const seedDemoCatalog = useServiceArchitectureStore((s) => s.seedDemoCatalog);
-  const resetServiceArchitecture = useServiceArchitectureStore((s) => s.resetServiceArchitecture);
-
-  const businessUnits = useHrWorkforceStore((s) => s.businessUnits);
-  const roles = useHrWorkforceStore((s) => s.roles);
-
   const [familyName, setFamilyName] = useState("");
   const [familyCode, setFamilyCode] = useState("");
   const [tierFamilyId, setTierFamilyId] = useState("");
   const [tierName, setTierName] = useState("");
   const [tierCode, setTierCode] = useState("");
-  const [seedMessage, setSeedMessage] = useState("");
-
   const tiersByFamily = useMemo(
     () =>
       serviceFamilies.map((family) => ({
@@ -51,43 +42,7 @@ export function ServiceFamiliesView() {
         <p className="mt-1 text-sm text-muted-foreground">{t("familiesSubtitle")}</p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <CardTitle>{t("seedTitle")}</CardTitle>
-              <CardDescription>{t("seedDescription")}</CardDescription>
-            </div>
-            <InsightBulb label={t("seedTitle")} description={t("seedHelp")} />
-          </div>
-        </CardHeader>
-        <CardContent className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="secondary"
-            onClick={() => {
-              const buId = businessUnits[0]?.id ?? "";
-              const roleIds = roles.filter((r) => !r.archived).map((r) => r.id);
-              const res = seedDemoCatalog({ businessUnitId: buId, roleIds });
-              setSeedMessage(res.ok ? t("seedApplied") : res.reason || t("seedBlocked"));
-            }}
-          >
-            {t("seedButton")}
-          </Button>
-          <Button
-            variant="outline"
-            className="border-destructive/40 text-destructive hover:bg-destructive/10"
-            onClick={() => {
-              if (!window.confirm(t("resetCatalogConfirm"))) return;
-              resetServiceArchitecture();
-              setSeedMessage(t("resetCatalogDone"));
-            }}
-          >
-            {t("resetCatalogButton")}
-          </Button>
-          {seedMessage ? <span className="text-xs text-muted-foreground">{seedMessage}</span> : null}
-          <p className="w-full text-xs text-muted-foreground">{t("resetCatalogHint")}</p>
-        </CardContent>
-      </Card>
+      <SampleDataPanel moduleId="service-architecture" />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
@@ -136,8 +91,16 @@ export function ServiceFamiliesView() {
                 ))}
               </SelectContent>
             </Select>
-            <Input value={tierName} onChange={(e) => setTierName(e.target.value)} placeholder={t("tierNamePlaceholder")} />
-            <Input value={tierCode} onChange={(e) => setTierCode(e.target.value)} placeholder={t("tierCodePlaceholder")} />
+            <Input
+              value={tierName}
+              onChange={(e) => setTierName(e.target.value)}
+              placeholder={t("tierNamePlaceholder")}
+            />
+            <Input
+              value={tierCode}
+              onChange={(e) => setTierCode(e.target.value)}
+              placeholder={t("tierCodePlaceholder")}
+            />
             <Button
               onClick={() => {
                 if (!tierFamilyId || !tierName.trim() || !tierCode.trim()) return;
@@ -193,4 +156,3 @@ export function ServiceFamiliesView() {
     </div>
   );
 }
-

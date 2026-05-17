@@ -1,6 +1,8 @@
 import type { HrBusinessUnit, HrDepartment, HrTeam, JobRole } from "@/types/hr-workforce";
 import { newHrId } from "./id";
 import {
+  IMPORT_COLUMN_LABELS,
+  listUnmappedImportKeys,
   mapRowToJobRole,
   type ImportColumnKey,
   type ParsedImportRow,
@@ -22,6 +24,11 @@ export interface ImportApplyDeltas {
   roles: JobRole[];
 }
 
+export type ImportPlanOptions = {
+  /** When true, plan contains only structure/roles from the file (no merge with existing Main/General). */
+  replaceExisting?: boolean;
+};
+
 export type ImportPlanResult =
   | { ok: false; errors: string[] }
   | {
@@ -31,6 +38,14 @@ export type ImportPlanResult =
         newDepartments: number;
         newTeams: number;
         roles: number;
+        replaceExisting: boolean;
+        unmappedCompensationFields: string[];
+        sampleRole?: {
+          name: string;
+          annualEndOfServiceCost: number;
+          riskFactorPct: number;
+          additionalCostsCount: number;
+        };
       };
       deltas: ImportApplyDeltas;
     };
@@ -46,8 +61,10 @@ function ciKey(s: string): string {
 export function buildImportPlan(
   existing: ImportExistingSnapshot,
   rows: ParsedImportRow[],
-  columnMap: Partial<Record<ImportColumnKey, string>>
+  columnMap: Partial<Record<ImportColumnKey, string>>,
+  options?: ImportPlanOptions
 ): ImportPlanResult {
+  const replaceExisting = options?.replaceExisting === true;
   const errors: string[] = [];
 
   const businessUnits = new Map<string, HrBusinessUnit>();
@@ -58,34 +75,21 @@ export function buildImportPlan(
   const deltaDepts: HrDepartment[] = [];
   const deltaTeams: HrTeam[] = [];
 
-  for (const u of existing.businessUnits) {
-    businessUnits.set(ciKey(u.name), { ...u });
-  }
-  for (const d of existing.departments) {
-    departments.set(`${d.businessUnitId}::${ciKey(d.name)}`, { ...d });
-  }
-  for (const t of existing.teams) {
-    teams.set(`${t.departmentId}::${ciKey(t.name)}`, { ...t });
+  if (!replaceExisting) {
+    for (const u of existing.businessUnits) {
+      businessUnits.set(ciKey(u.name), { ...u });
+    }
+    for (const d of existing.departments) {
+      departments.set(`${d.businessUnitId}::${ciKey(d.name)}`, { ...d });
+    }
+    for (const t of existing.teams) {
+      teams.set(`${t.departmentId}::${ciKey(t.name)}`, { ...t });
+    }
   }
 
   const ensureBu = (nameRaw: string | undefined): HrBusinessUnit | null => {
     const name = (nameRaw ?? "").trim();
-    if (!name) {
-      if (businessUnits.size > 0) return [...businessUnits.values()][0];
-      const t = nowIso();
-      const u: HrBusinessUnit = {
-        id: newHrId("bu"),
-        name: "Main",
-        code: "MAIN",
-        description: "",
-        isActive: true,
-        createdAt: t,
-        updatedAt: t,
-      };
-      businessUnits.set(ciKey(u.name), u);
-      deltaBus.push(u);
-      return u;
-    }
+    if (!name) return null;
     const k = ciKey(name);
     let u = businessUnits.get(k);
     if (u) return u;
@@ -171,7 +175,14 @@ export function buildImportPlan(
       defaultCurrency: existing.defaultCurrency,
     });
     if (!role) {
-      errors.push(`Row ${row.rowIndex}: missing department (or business unit could not be resolved)`);
+      const buCell = columnMap.businessUnit
+        ? row.values[columnMap.businessUnit] ?? ""
+        : "";
+      if (!buCell.trim()) {
+        errors.push(`Row ${row.rowIndex}: Business Unit is required (empty cell — will not use "Main")`);
+      } else {
+        errors.push(`Row ${row.rowIndex}: missing department (or business unit could not be resolved)`);
+      }
       continue;
     }
     const v = validateJobRole(role);
@@ -184,18 +195,31 @@ export function buildImportPlan(
 
   if (errors.length) return { ok: false, errors };
 
+  const unmapped = listUnmappedImportKeys(columnMap).map((k) => IMPORT_COLUMN_LABELS[k]);
+  const sample = rolesOut[0];
+
   return {
     ok: true,
     preview: {
-      newBusinessUnits: deltaBus.length,
-      newDepartments: deltaDepts.length,
-      newTeams: deltaTeams.length,
+      newBusinessUnits: replaceExisting ? businessUnits.size : deltaBus.length,
+      newDepartments: replaceExisting ? departments.size : deltaDepts.length,
+      newTeams: replaceExisting ? teams.size : deltaTeams.length,
       roles: rolesOut.length,
+      replaceExisting,
+      unmappedCompensationFields: unmapped,
+      sampleRole: sample
+        ? {
+            name: sample.name,
+            annualEndOfServiceCost: sample.annualEndOfServiceCost,
+            riskFactorPct: sample.riskFactorPct,
+            additionalCostsCount: sample.additionalCosts.length,
+          }
+        : undefined,
     },
     deltas: {
-      businessUnits: deltaBus,
-      departments: deltaDepts,
-      teams: deltaTeams,
+      businessUnits: replaceExisting ? [...businessUnits.values()] : deltaBus,
+      departments: replaceExisting ? [...departments.values()] : deltaDepts,
+      teams: replaceExisting ? [...teams.values()] : deltaTeams,
       roles: rolesOut,
     },
   };

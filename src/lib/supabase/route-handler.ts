@@ -1,9 +1,14 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
+function readEnv(name: string): string | undefined {
+  const value = process.env[name]?.trim();
+  return value ? value : undefined;
+}
+
 export async function createRouteSupabaseClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const url = readEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const key = readEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
   if (!url || !key) return null;
   const cookieStore = await cookies();
   return createServerClient(url, key, {

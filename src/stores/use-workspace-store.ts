@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import {
-  DEMO_ORG_ID,
   demoCompanies,
   demoOpportunities,
   demoScenarios,
@@ -40,17 +39,21 @@ interface WorkspaceState {
     streams: DemoRevenueStream[];
     scenarios: DemoScenario[];
   }) => void;
+  /** Replace persisted workspace with the default executive demo pack. */
+  loadDemoPack: () => void;
+  /** Clear companies/streams/scenarios (empty planning workspace). */
+  resetToEmpty: () => void;
 }
 
 export const useWorkspaceStore = create<WorkspaceState>()(
   persist(
     (set, get) => ({
-      selectedCompanyId: demoCompanies[0]?.id ?? "",
-      selectedScenarioId: demoScenarios[0]?.id ?? "",
-      companies: demoCompanies.map((c) => ({ ...c })),
-      opportunities: demoOpportunities.map((o) => ({ ...o })),
-      streams: cloneStreams(),
-      scenarios: cloneScenarios(),
+      selectedCompanyId: "",
+      selectedScenarioId: "",
+      companies: [],
+      opportunities: [],
+      streams: [],
+      scenarios: [],
       tierLineOverrides: {},
       setCompany: (id) =>
         set(() => {
@@ -90,6 +93,26 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           selectedCompanyId: company.id,
           selectedScenarioId: newScenarios[0]?.id ?? s.selectedScenarioId,
         })),
+      loadDemoPack: () =>
+        set({
+          selectedCompanyId: demoCompanies[0]?.id ?? "",
+          selectedScenarioId: demoScenarios[0]?.id ?? "",
+          companies: demoCompanies.map((c) => ({ ...c })),
+          opportunities: demoOpportunities.map((o) => ({ ...o })),
+          streams: cloneStreams(),
+          scenarios: cloneScenarios(),
+          tierLineOverrides: {},
+        }),
+      resetToEmpty: () =>
+        set({
+          selectedCompanyId: "",
+          selectedScenarioId: "",
+          companies: [],
+          opportunities: [],
+          streams: [],
+          scenarios: [],
+          tierLineOverrides: {},
+        }),
     }),
     {
       name: "efp-workspace",
@@ -97,19 +120,16 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         const p = (persisted ?? {}) as Partial<WorkspaceState>;
         return {
           ...current,
-          ...p,
-          streams:
-            Array.isArray(p.streams) && p.streams.length > 0 ? p.streams : current.streams,
-          scenarios:
-            Array.isArray(p.scenarios) && p.scenarios.length > 0 ? p.scenarios : current.scenarios,
-          companies:
-            Array.isArray(p.companies) && p.companies.length > 0
-              ? p.companies
-              : current.companies,
-          opportunities:
-            Array.isArray(p.opportunities) && p.opportunities.length > 0
-              ? p.opportunities
-              : current.opportunities,
+          selectedCompanyId: p.selectedCompanyId ?? "",
+          selectedScenarioId: p.selectedScenarioId ?? "",
+          companies: Array.isArray(p.companies) ? p.companies : [],
+          opportunities: Array.isArray(p.opportunities) ? p.opportunities : [],
+          streams: Array.isArray(p.streams) ? p.streams : [],
+          scenarios: Array.isArray(p.scenarios) ? p.scenarios : [],
+          tierLineOverrides:
+            p.tierLineOverrides && typeof p.tierLineOverrides === "object"
+              ? p.tierLineOverrides
+              : {},
         };
       },
       partialize: (s) => ({

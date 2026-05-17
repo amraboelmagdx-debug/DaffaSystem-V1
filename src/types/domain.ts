@@ -20,6 +20,8 @@ export interface DemoCompany {
   id: string;
   name: string;
   organizationId: string;
+  /** Stable HR catalog business unit id when synced from workforce module. */
+  hrBusinessUnitId?: string;
   fixedCostsMonthly: number;
   growthTargetPct: number;
   marginTargetPct: number;

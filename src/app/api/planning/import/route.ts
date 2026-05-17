@@ -1,7 +1,15 @@
 import { NextResponse } from "next/server";
 import * as XLSX from "xlsx";
+import { requireTenantContext } from "@/server/tenant/context";
+import { tenantErrorResponse } from "@/server/tenant/errors";
 
 export async function POST(req: Request) {
+  try {
+    await requireTenantContext();
+  } catch (err) {
+    return tenantErrorResponse(err);
+  }
+
   const ct = req.headers.get("content-type") ?? "";
   try {
     if (ct.includes("application/json")) {

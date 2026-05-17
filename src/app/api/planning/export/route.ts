@@ -3,6 +3,8 @@ import { z } from "zod";
 import * as XLSX from "xlsx";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { requireTenantContext } from "@/server/tenant/context";
+import { tenantErrorResponse } from "@/server/tenant/errors";
 
 const bodySchema = z.object({
   format: z.enum(["xlsx", "csv", "pdf"]),
@@ -11,6 +13,12 @@ const bodySchema = z.object({
 });
 
 export async function POST(req: Request) {
+  try {
+    await requireTenantContext();
+  } catch (err) {
+    return tenantErrorResponse(err);
+  }
+
   const json = await req.json().catch(() => null);
   const parsed = bodySchema.safeParse(json);
   if (!parsed.success) {

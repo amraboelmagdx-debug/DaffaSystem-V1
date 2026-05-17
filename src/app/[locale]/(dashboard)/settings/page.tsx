@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { dealSizeTiers } from "@/data/demo-seed";
 import { formatCurrency, formatPct } from "@/lib/calculations/engine";
 import { Badge } from "@/components/ui/badge";
+import { PlatformSampleDataControls } from "@/components/sample-data/platform-sample-data-controls";
 
 export default function SettingsPage() {
   return (
@@ -15,6 +16,8 @@ export default function SettingsPage() {
           and anon key enable live data; leave unset for deterministic demo mode.
         </p>
       </div>
+
+      <PlatformSampleDataControls />
 
       <Card className="border-border/60 bg-card/60 backdrop-blur">
         <CardHeader>

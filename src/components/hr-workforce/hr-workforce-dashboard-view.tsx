@@ -31,7 +31,6 @@ import { effectiveOhBillableHeadcount } from "@/lib/hr-workforce/structure-utils
 import { effectiveOperationalRoleType } from "@/lib/hr-workforce/role-operational-type";
 import { aggregateByDepartment, buildWorkforceDashboardAggregates } from "@/lib/hr-workforce/aggregates";
 import { cn } from "@/lib/utils";
-import { HrWorkforceDemoSeedBanner } from "./hr-workforce-demo-seed-banner";
 import type { HrDashChartLabels } from "./hr-workforce-dashboard-charts";
 import type { RoleCostBreakdown } from "@/types/hr-workforce";
 
@@ -182,10 +181,32 @@ export function HrWorkforceDashboardView() {
     return s;
   }, [operationalRolesInBu, model.breakdownByRoleId, hrGlobalSettings]);
 
-  const dashOhSlot =
-    model.ohByBusinessUnitId[selectedOhBuId] ??
-    model.ohByBusinessUnitId[businessUnits[0]?.id ?? ""] ??
-    Object.values(model.ohByBusinessUnitId)[0]!;
+  const dashOhSlot = useMemo(() => {
+    const direct =
+      model.ohByBusinessUnitId[selectedOhBuId] ??
+      model.ohByBusinessUnitId[businessUnits[0]?.id ?? ""];
+    if (direct) return direct;
+    const first = Object.values(model.ohByBusinessUnitId)[0];
+    if (first) return first;
+    const buId = selectedOhBuId || businessUnits[0]?.id || "";
+    const ohManual = { ...DEFAULT_OH, ...(ohManualByBusinessUnitId[buId] ?? {}) };
+    const eff = effectiveOhBillableHeadcount(roles, ohManual, buId);
+    const ohNumerator = resolveOhAnnualNumerator(ohManual, roles, hrGlobalSettings, buId);
+    const oh = computeOhEngine({
+      ...hrGlobalSettings,
+      ...ohManual,
+      billableEmployeeCount: eff,
+      totalAnnualOverhead: ohNumerator.totalNumerator,
+    });
+    return { oh, ohNumerator };
+  }, [
+    model.ohByBusinessUnitId,
+    selectedOhBuId,
+    businessUnits,
+    ohManualByBusinessUnitId,
+    roles,
+    hrGlobalSettings,
+  ]);
 
   const trendData = useMemo(() => {
     const rows: { label: string; monthly: number }[] = [];
@@ -331,8 +352,6 @@ export function HrWorkforceDashboardView() {
         <p className="mt-1 text-sm text-muted-foreground">{t("dashSubtitle")}</p>
         <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">{t("dashContextNote")}</p>
       </div>
-
-      <HrWorkforceDemoSeedBanner />
 
       <Card className="border-primary/20 bg-gradient-to-r from-primary/[0.06] via-card to-card">
         <CardContent className="flex flex-col gap-3 pt-6 sm:flex-row sm:items-end sm:justify-between">

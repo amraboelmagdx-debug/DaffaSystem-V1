@@ -27,5 +27,11 @@ export function isHrWorkforceDiskApiAllowedOnServer(): boolean {
  * client-side disk calls in production bundles (prevents accidental exposure surface).
  */
 export function isHrWorkforceHybridDiskMirrorEnabledOnClient(): boolean {
-  return process.env.NODE_ENV === "development";
+  if (process.env.NODE_ENV !== "development") return false;
+  // Tenant namespaced keys must not share one global dev disk file across orgs.
+  const namespaced =
+    process.env.NEXT_PUBLIC_TENANT_NAMESPACED_PERSIST !== "false" &&
+    process.env.NEXT_PUBLIC_TENANT_NAMESPACED_PERSIST !== "0";
+  if (namespaced) return false;
+  return true;
 }

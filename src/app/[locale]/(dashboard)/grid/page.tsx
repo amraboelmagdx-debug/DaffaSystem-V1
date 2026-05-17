@@ -32,9 +32,13 @@ export default function ForecastGridPage() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/api/planning/workspace");
-        const data = await res.json();
+        const res = await fetch("/api/planning/workspace", { credentials: "include" });
         if (cancelled) return;
+        if (res.status === 401 || res.status === 403) {
+          setDbStatus("none");
+          return;
+        }
+        const data = await res.json();
         setDbStatus(data?.source === "supabase" ? "ok" : "none");
       } catch {
         if (!cancelled) setDbStatus("none");
@@ -79,6 +83,7 @@ export default function ForecastGridPage() {
   const downloadExport = async (format: "csv" | "xlsx" | "pdf") => {
     const res = await fetch("/api/planning/export", {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         format,
@@ -102,6 +107,7 @@ export default function ForecastGridPage() {
     const buf = await file.arrayBuffer();
     const res = await fetch("/api/planning/import", {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/octet-stream" },
       body: buf,
     });

@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { SampleDataPanel } from "@/components/sample-data/sample-data-panel";
 
 const SalesPlanWizard = dynamic(
   () =>
@@ -16,5 +17,11 @@ const SalesPlanWizard = dynamic(
 );
 
 export default function SalesPlanPage() {
-  return <SalesPlanWizard />;
+  return (
+    <div className="space-y-4">
+      <SampleDataPanel moduleId="sales-plan-wizard" />
+      <SampleDataPanel moduleId="workspace" className="border-dashed" />
+      <SalesPlanWizard />
+    </div>
+  );
 }

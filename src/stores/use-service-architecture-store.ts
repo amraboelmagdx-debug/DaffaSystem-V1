@@ -3,6 +3,8 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { newServiceId } from "@/lib/service-architecture/id";
 import { makeServiceArchitectureDemoSeed } from "@/lib/service-architecture/demo-seed";
 import { validateTemplateTierFamilyConsistency } from "@/lib/service-architecture/validation";
+import { createTenantScopedStorage } from "@/lib/persistence/tenant-storage";
+import { SERVICE_ARCHITECTURE_BASE_KEY } from "@/lib/persistence/persist-keys";
 import type {
   DeliveryPhase,
   ServiceDeliverable,
@@ -399,7 +401,7 @@ export const useServiceArchitectureStore = create<ServiceArchitectureState>()(
     }),
     {
       name: "efp-service-architecture-v1",
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => createTenantScopedStorage(SERVICE_ARCHITECTURE_BASE_KEY)),
       merge: (persisted, current) => {
         if (!persisted || typeof persisted !== "object") return current;
         const normalized = normalizeCatalogState(persisted as Partial<ServiceArchitectureCatalogState>);

@@ -11,11 +11,14 @@ create table if not exists public.market_segments (
   code text,
   sort_order int not null default 0,
   metadata jsonb default '{}'::jsonb,
-  created_at timestamptz not null default now(),
-  unique (company_id, lower(name))
+  created_at timestamptz not null default now()
 );
 
 create index if not exists idx_market_segments_company on public.market_segments (company_id);
+
+-- Case-insensitive segment names per company (expression not allowed in table UNIQUE).
+create unique index if not exists idx_market_segments_company_name_ci
+  on public.market_segments (company_id, lower(name));
 
 -- Scenario lineage & snapshots
 alter table public.scenarios

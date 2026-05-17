@@ -18,6 +18,10 @@ import {
   type ImportColumnKey,
   IMPORT_COLUMN_LABELS,
 } from "@/lib/hr-workforce/import-parser";
+import { syncEconomicsGraphFromHr } from "@/lib/platform-economics/client-sync";
+import { flushHrCatalogSync } from "@/lib/persistence/hr-catalog-dual-write";
+import { writeHrCatalogLocalPersistSnapshot } from "@/lib/persistence/hr-catalog-local-persist";
+import { getActiveOrganizationId } from "@/lib/persistence/active-tenant";
 import { useHrWorkforceStore } from "@/stores/use-hr-workforce-store";
 
 const COLUMN_KEYS: ImportColumnKey[] = [
@@ -46,6 +50,10 @@ export function HrWorkforceImportView() {
   const importSessionClearAfterSuccessfulCommit = useHrWorkforceStore(
     (s) => s.importSessionClearAfterSuccessfulCommit
   );
+  const importSessionReplaceExisting = useHrWorkforceStore((s) => s.importSessionReplaceExisting);
+  const importSessionSetReplaceExisting = useHrWorkforceStore(
+    (s) => s.importSessionSetReplaceExisting
+  );
 
   const fileName = useHrWorkforceStore((s) => s.importSessionFileName);
   const headers = useHrWorkforceStore((s) => s.importSessionHeaders);
@@ -71,9 +79,23 @@ export function HrWorkforceImportView() {
     importSessionRunDryRun();
   };
 
-  const commit = () => {
+  const commit = async () => {
     if (!plan?.ok) return;
-    applyImportDeltas(plan.deltas);
+    applyImportDeltas(plan.deltas, { replace: importSessionReplaceExisting });
+    const orgId = getActiveOrganizationId();
+    if (orgId) {
+      writeHrCatalogLocalPersistSnapshot(orgId, new Date().toISOString());
+      try {
+        await flushHrCatalogSync(orgId, { skipExpectedUpdatedAt: true });
+      } catch {
+        /* store already updated; persist bar shows sync retry */
+      }
+      try {
+        await syncEconomicsGraphFromHr();
+      } catch {
+        /* planning sync retried on next tenant hydrate */
+      }
+    }
     pushImportLog({
       fileName,
       rowCount: plan.deltas.roles.length,
@@ -119,9 +141,30 @@ export function HrWorkforceImportView() {
       </div>
 
       {headers.length > 0 && (
+        <Card className="border-border/60">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">{t("importReplaceTitle")}</CardTitle>
+            <CardDescription>{t("importReplaceDesc")}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <label className="flex cursor-pointer items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={importSessionReplaceExisting}
+                onChange={(e) => importSessionSetReplaceExisting(e.target.checked)}
+              />
+              <span>{t("importReplaceLabel")}</span>
+            </label>
+          </CardContent>
+        </Card>
+      )}
+
+      {headers.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">{t("columnMap")}</CardTitle>
+            <CardDescription>{t("columnMapHint")}</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {COLUMN_KEYS.map((key) => (
@@ -190,7 +233,7 @@ export function HrWorkforceImportView() {
         <Button type="button" variant="secondary" disabled={!rows.length} onClick={runDryRun}>
           {t("dryRun")}
         </Button>
-        <Button type="button" disabled={!plan?.ok} onClick={commit}>
+        <Button type="button" disabled={!plan?.ok} onClick={() => void commit()}>
           {t("importCommit")}
         </Button>
       </div>
@@ -218,11 +261,33 @@ export function HrWorkforceImportView() {
           </CardHeader>
           <CardContent className="text-sm">
             <ul className="list-inside list-disc space-y-1">
+              {plan.preview.replaceExisting ? (
+                <li>{t("previewReplaceMode")}</li>
+              ) : (
+                <li>{t("previewAppendMode")}</li>
+              )}
               <li>{t("previewNewBU", { n: plan.preview.newBusinessUnits })}</li>
               <li>{t("previewNewDept", { n: plan.preview.newDepartments })}</li>
               <li>{t("previewNewTeam", { n: plan.preview.newTeams })}</li>
               <li>{t("previewRoles", { n: plan.preview.roles })}</li>
+              {plan.preview.sampleRole ? (
+                <li>
+                  {t("previewSampleRole", {
+                    name: plan.preview.sampleRole.name,
+                    eos: plan.preview.sampleRole.annualEndOfServiceCost,
+                    risk: plan.preview.sampleRole.riskFactorPct,
+                    extras: plan.preview.sampleRole.additionalCostsCount,
+                  })}
+                </li>
+              ) : null}
             </ul>
+            {plan.preview.unmappedCompensationFields.length > 0 ? (
+              <p className="mt-3 text-amber-800 dark:text-amber-200">
+                {t("previewUnmappedFields", {
+                  fields: plan.preview.unmappedCompensationFields.join(", "),
+                })}
+              </p>
+            ) : null}
           </CardContent>
         </Card>
       )}

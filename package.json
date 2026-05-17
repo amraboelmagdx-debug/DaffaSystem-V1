@@ -9,7 +9,18 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "supabase:start": "npx supabase start",
+    "supabase:stop": "npx supabase stop",
+    "supabase:reset": "npx supabase db reset",
+    "supabase:status": "npx supabase status",
+    "verify:hr-persist": "node scripts/verify-hr-catalog-persistence.mjs",
+    "verify:hr-api": "node scripts/verify-hr-catalog-api.mjs http://localhost:3001",
+    "cleanup:hr-legacy": "node scripts/cleanup-hr-legacy-persist.mjs",
+    "cleanup:platform-data": "node scripts/cleanup-platform-data.mjs http://localhost:3001",
+    "verify:hr-e2e": "node scripts/verify-hr-catalog-e2e.mjs http://localhost:3001",
+    "verify:hr-browser": "node scripts/verify-hr-browser-hydration.mjs http://localhost:3001",
+    "inspect:hr-recovery": "node scripts/inspect-hr-recovery.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -58,6 +69,7 @@
     "@types/react-dom": "^19.0.2",
     "eslint": "^9.17.0",
     "eslint-config-next": "^15.1.0",
+    "playwright": "^1.60.0",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.16",
     "typescript": "^5.7.2",

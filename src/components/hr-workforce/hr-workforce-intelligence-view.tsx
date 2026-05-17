@@ -25,7 +25,6 @@ import {
 import type { BuBenchmarkRow, OhCompositionMonthly, WorkforceAlert } from "@/lib/hr-workforce/intelligence";
 import { useHrWorkforceStore } from "@/stores/use-hr-workforce-store";
 import { cn } from "@/lib/utils";
-import { HrWorkforceDemoSeedBanner } from "./hr-workforce-demo-seed-banner";
 
 const IntelligenceOrgDistributionChart = dynamic(
   () =>
@@ -297,8 +296,6 @@ export function HrWorkforceIntelligenceView() {
         <h1 className="text-2xl font-semibold tracking-tight">{t("pageTitle")}</h1>
         <p className="max-w-3xl text-sm text-muted-foreground">{t("pageSubtitle")}</p>
       </div>
-
-      <HrWorkforceDemoSeedBanner />
 
       <Card className="border-border/60 bg-card/50">
         <CardContent className="flex flex-col gap-3 pt-6 sm:flex-row sm:items-end sm:justify-between">

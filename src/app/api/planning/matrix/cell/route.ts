@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createRouteSupabaseClient } from "@/lib/supabase/route-handler";
+import { requireTenantContext } from "@/server/tenant/context";
+import { tenantErrorResponse } from "@/server/tenant/errors";
 
 const bodySchema = z.object({
   row_id: z.string().uuid(),
@@ -9,6 +11,12 @@ const bodySchema = z.object({
 });
 
 export async function POST(req: Request) {
+  try {
+    await requireTenantContext();
+  } catch (err) {
+    return tenantErrorResponse(err);
+  }
+
   const supabase = await createRouteSupabaseClient();
   if (!supabase) {
     return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });

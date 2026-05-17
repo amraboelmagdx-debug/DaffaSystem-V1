@@ -38,7 +38,6 @@ export function getHrWorkforceHybridStateStorage(): StateStorage {
       if (typeof window === "undefined") return null;
       const local = window.localStorage.getItem(name);
       if (local != null && local !== "") {
-        scheduleDiskWrite(local);
         return local;
       }
       if (!isHrWorkforceHybridDiskMirrorEnabledOnClient()) return null;

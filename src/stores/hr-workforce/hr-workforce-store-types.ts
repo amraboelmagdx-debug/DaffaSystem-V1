@@ -49,6 +49,7 @@ export interface HrWorkforceState {
   importSessionPlan: ImportPlanResult | null;
   /** ISO timestamp of last dry-run attempt (success or failure). */
   importSessionLastDryRunAt: string | null;
+  importSessionReplaceExisting: boolean;
   snapshots: HrSnapshotRecord[];
 
   /** Session-only: last failed snapshot restore message (not persisted). */
@@ -79,7 +80,7 @@ export interface HrWorkforceState {
   bulkPatchRoles: (ids: string[], patch: Partial<JobRole>) => void;
   bulkDeleteRoles: (ids: string[]) => void;
 
-  applyImportDeltas: (deltas: ImportApplyDeltas) => void;
+  applyImportDeltas: (deltas: ImportApplyDeltas, options?: { replace?: boolean }) => void;
   pushImportLog: (entry: Omit<HrImportLogEntry, "id" | "createdAt"> & Partial<Pick<HrImportLogEntry, "id" | "createdAt">>) => void;
   deleteImportLog: (logId: string) => void;
   clearAllImportLogs: () => void;
@@ -90,6 +91,7 @@ export interface HrWorkforceState {
     columnMap: Partial<Record<ImportColumnKey, string>>;
   }) => void;
   importSessionSetColumnMapping: (key: ImportColumnKey, sheetHeader: string | undefined) => void;
+  importSessionSetReplaceExisting: (replace: boolean) => void;
   importSessionRunDryRun: () => void;
   importSessionClearAfterSuccessfulCommit: () => void;
 

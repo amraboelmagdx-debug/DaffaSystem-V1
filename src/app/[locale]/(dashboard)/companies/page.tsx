@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { SampleDataPanel } from "@/components/sample-data/sample-data-panel";
 import { streamsForCompany, useWorkspaceStore } from "@/stores/use-workspace-store";
 import { formatCurrency, formatPct } from "@/lib/calculations/engine";
 import type { OpportunityTierDefinition } from "@/types/sales-plan";
@@ -71,15 +72,18 @@ export default function CompaniesPage() {
 
   if (!company) {
     return (
-      <div className="mx-auto max-w-2xl rounded-lg border border-border/60 bg-muted/20 p-8 text-center text-sm text-muted-foreground">
-        No companies are available in the workspace. Reset local storage for this app or reload with
-        demo seed data.
+      <div className="mx-auto max-w-2xl space-y-4">
+        <SampleDataPanel moduleId="workspace" />
+        <p className="text-center text-sm text-muted-foreground">
+          No companies in the workspace. Load sample data to get started.
+        </p>
       </div>
     );
   }
 
   return (
     <div className="mx-auto max-w-5xl space-y-8">
+      <SampleDataPanel moduleId="workspace" />
       <div>
         <h1 className="text-3xl font-semibold tracking-tight">Company management</h1>
         <p className="mt-2 text-sm text-muted-foreground">

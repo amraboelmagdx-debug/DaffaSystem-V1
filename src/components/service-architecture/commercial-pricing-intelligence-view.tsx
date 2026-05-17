@@ -36,6 +36,7 @@ import { MODEL_COMPARISON_DEFAULTS } from "@/lib/commercial-pricing-intelligence
 import { toCommercialPricingSnapshot } from "@/lib/commercial-pricing-intelligence/sales-calculator-adapter";
 import type { PricingModelId } from "@/lib/commercial-pricing-intelligence/types";
 import { cn } from "@/lib/utils";
+import { SampleDataPanel } from "@/components/sample-data/sample-data-panel";
 
 export function CommercialPricingIntelligenceView() {
   const t = useTranslations("serviceArchitecture");
@@ -299,6 +300,7 @@ export function CommercialPricingIntelligenceView() {
 
   return (
     <div className="space-y-6">
+      <SampleDataPanel moduleId="commercial-pricing-prefs" />
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{t("commercialPricingTitle")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{t("commercialPricingSubtitle")}</p>

@@ -39,3 +39,4 @@ workbook-dump.json
 
 # HR workforce dev disk mirror (cross-port); opt-in in prod via HR_WORKFORCE_DISK_SYNC
 data/hr-workforce-persist.json
+data/recovery/
