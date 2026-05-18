@@ -25,6 +25,7 @@ import {
   validateDealEconomicsIntegrity,
   type StreamBuSlice,
 } from "./validate-integrity";
+import { marginsFromPriceAndCostTotals } from "@/lib/planning/primitives";
 import { defaultServiceEconomicsLineage } from "@/lib/service-economics/types";
 
 export type EvaluateDealEconomicsParams = {
@@ -62,8 +63,14 @@ function scaleMeasures(
   let grossMarginPct = snap.measures.grossMarginPct;
   let contributionMarginPct = snap.measures.contributionMarginPct;
   if (suggestedPrice != null && suggestedPrice > 0) {
-    grossMarginPct = (suggestedPrice - directCost) / suggestedPrice;
-    contributionMarginPct = (suggestedPrice - loadedCost) / suggestedPrice;
+    const margins = marginsFromPriceAndCostTotals({
+      directCost,
+      loadedCost,
+      ohContribution,
+      suggestedPrice,
+    });
+    grossMarginPct = margins.grossMarginPct;
+    contributionMarginPct = margins.contributionMarginPct;
   }
   return {
     totalQuantity: q,
@@ -101,8 +108,14 @@ function rollupLineMeasures(lines: DealEconomicsLineResult[]): DealEconomicsMeas
   }
   if (hasPrice && priceSum > 0) {
     rollup.suggestedPrice = priceSum;
-    rollup.grossMarginPct = (priceSum - rollup.directCost) / priceSum;
-    rollup.contributionMarginPct = (priceSum - rollup.loadedCost) / priceSum;
+    const margins = marginsFromPriceAndCostTotals({
+      directCost: rollup.directCost,
+      loadedCost: rollup.loadedCost,
+      ohContribution: rollup.ohContribution,
+      suggestedPrice: priceSum,
+    });
+    rollup.grossMarginPct = margins.grossMarginPct;
+    rollup.contributionMarginPct = margins.contributionMarginPct;
   }
   return rollup;
 }

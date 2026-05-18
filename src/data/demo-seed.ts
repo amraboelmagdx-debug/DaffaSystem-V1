@@ -196,22 +196,7 @@ export const demoOpportunities: DemoOpportunity[] = [
   },
 ];
 
-function monthsAhead(n: number) {
-  const d = new Date();
-  d.setMonth(d.getMonth() + n);
-  return d.toISOString().slice(0, 7);
-}
-
-export function buildDemoForecastSeries(company: DemoCompany): DemoForecastMonth[] {
-  const base = company.revenueMonthly;
-  const g = company.growthTargetPct / 12;
-  return Array.from({ length: 12 }, (_, i) => {
-    const revenue = base * (1 + g * i);
-    const gp = revenue * company.contributionMarginPct;
-    const np = gp - company.fixedCostsMonthly;
-    return { month: monthsAhead(i - 6), revenue: revenue, grossProfit: gp, netProfit: np };
-  });
-}
+export { buildDemoForecastSeries } from "@/lib/planning/forecast/rolling-forecast-series";
 
 export const dealSizeTiers = [
   { key: "tiny", label: "Tiny", min: 0, max: 25_000, avg: 12_000, margin: 0.28, prob: 0.35 },

@@ -10,6 +10,7 @@
 import type { DemoCompany, DemoOpportunity, DemoScenario, DemoRevenueStream } from "@/types/domain";
 import { resolveBusinessUnitIdForCompany } from "@/lib/platform-economics/operational-unit";
 import type { TierLine } from "@/lib/planning/workbook-engine";
+import type { ScenarioPlanningBundle } from "@/types/planning-scenario";
 
 export type PlanningContext = {
   company: DemoCompany;
@@ -20,6 +21,8 @@ export type PlanningContext = {
   scenarios: DemoScenario[];
   activeScenarioId: string;
   tierLineOverrides: Record<string, TierLine[]>;
+  /** When set, per-scenario engine outputs use bundle overlay + tiers (canonical path). */
+  scenarioBundles?: Record<string, ScenarioPlanningBundle>;
 };
 
 export function buildPlanningContext(input: {
@@ -29,6 +32,7 @@ export function buildPlanningContext(input: {
   scenarios: DemoScenario[];
   activeScenarioId: string;
   tierLineOverrides: Record<string, TierLine[]>;
+  scenarioBundles?: Record<string, ScenarioPlanningBundle>;
 }): PlanningContext {
   return {
     ...input,

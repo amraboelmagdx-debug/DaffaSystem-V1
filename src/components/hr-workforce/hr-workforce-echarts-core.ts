@@ -6,6 +6,7 @@ import {
   LegendComponent,
   TitleComponent,
   DatasetComponent,
+  GraphicComponent,
 } from "echarts/components";
 import { UniversalTransition } from "echarts/features";
 import { CanvasRenderer } from "echarts/renderers";
@@ -16,6 +17,7 @@ echarts.use([
   GridComponent,
   LegendComponent,
   DatasetComponent,
+  GraphicComponent,
   BarChart,
   LineChart,
   UniversalTransition,

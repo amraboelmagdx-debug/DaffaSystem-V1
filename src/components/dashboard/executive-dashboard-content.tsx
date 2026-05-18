@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import {
   Area,
@@ -25,10 +24,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { buildDemoForecastSeries } from "@/data/demo-seed";
+import { ExecutiveRollingForecastSection } from "@/components/dashboard/executive-rolling-forecast-section";
+import { AssumptionAttributionPanel } from "@/components/dashboard/assumption-attribution-panel";
+import { OperationalFeasibilityPanel } from "@/components/dashboard/operational-feasibility-panel";
+import { ScenarioComparisonDiffPanel } from "@/components/dashboard/scenario-comparison-diff-panel";
+import { ScenarioComparisonNarrative } from "@/components/dashboard/scenario-comparison-narrative";
+import { ScenarioComparisonToolbar } from "@/components/dashboard/scenario-comparison-toolbar";
+import { ScenarioDeltaKpiStrip } from "@/components/dashboard/scenario-delta-kpi-strip";
+import { ForwardForecastSection } from "@/components/dashboard/forward-forecast-section";
+import { useRollingForecastSeries } from "@/hooks/use-rolling-forecast-series";
+import type { ForwardForecastResult } from "@/types/forward-forecast";
+import type { AssumptionAttributionPhase } from "@/hooks/use-assumption-attribution";
+import type { OperationalFeasibilityPhase } from "@/hooks/use-operational-feasibility";
+import type { ScenarioComparisonPhase } from "@/hooks/use-scenario-comparison";
 import { formatCurrencyLocale, formatPct } from "@/lib/calculations/engine";
 import type { ExecutiveWorkspaceMeasuresResult } from "@/lib/planning/measures";
 import { InsightBulb } from "@/components/planning/insight-bulb";
+import { Link } from "@/i18n/navigation";
 import type { DemoCompany, DemoOpportunity, DemoScenario } from "@/types/domain";
 
 type Props = {
@@ -40,6 +52,16 @@ type Props = {
   measures: ExecutiveWorkspaceMeasuresResult;
   onSelectCompany: (companyId: string) => void;
   onSelectScenario: (scenarioId: string) => void;
+  compareMode?: boolean;
+  onCompareModeChange?: (on: boolean) => void;
+  baseScenarioId?: string;
+  compareScenarioId?: string;
+  onBaseScenarioChange?: (id: string) => void;
+  onCompareScenarioChange?: (id: string) => void;
+  comparison?: ScenarioComparisonPhase;
+  attribution?: AssumptionAttributionPhase;
+  operationalFeasibility?: OperationalFeasibilityPhase;
+  forwardForecast?: ForwardForecastResult | null;
 };
 
 export function ExecutiveDashboardContent({
@@ -51,10 +73,23 @@ export function ExecutiveDashboardContent({
   measures,
   onSelectCompany,
   onSelectScenario,
+  compareMode = false,
+  onCompareModeChange,
+  baseScenarioId = "",
+  compareScenarioId = "",
+  onBaseScenarioChange,
+  onCompareScenarioChange,
+  comparison,
+  attribution,
+  operationalFeasibility,
+  forwardForecast,
 }: Props) {
   const t = useTranslations("dashboard");
+  const tf = useTranslations("planning.forwardForecast");
+  const tc = useTranslations("planning.comparison");
   const tm = useTranslations("measures");
   const tp = useTranslations("planning");
+  const ts = useTranslations("planning.scenarios");
   const locale = useLocale();
   const fmt = (n: number) => formatCurrencyLocale(n, locale);
 
@@ -65,7 +100,14 @@ export function ExecutiveDashboardContent({
   const { weightedPipeline, forecastAchievementVsPlanProxy: forecastAchievement, blendedStreamCmPct } =
     measures;
 
-  const forecastSeries = useMemo(() => buildDemoForecastSeries(company), [company]);
+  const fallbackSeries = useRollingForecastSeries(company);
+  const forecastSeries =
+    forwardForecast?.financial.points.map((p) => ({
+      month: p.period,
+      revenue: p.revenue,
+      grossProfit: p.grossProfit,
+      netProfit: p.netProfit,
+    })) ?? fallbackSeries;
 
   const workbookSalesLabel =
     Number.isFinite(workbookTargets.salesTarget) && workbookTargets.salesTarget < 1e14
@@ -108,6 +150,7 @@ export function ExecutiveDashboardContent({
                 {scenarios.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
                     {s.name}
+                    {s.baseline ? ` (${ts("baseline")})` : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -119,6 +162,61 @@ export function ExecutiveDashboardContent({
         </div>
       </div>
 
+      <p className="rounded-lg border border-border/60 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+        {t("scenariosMonitorHint")}{" "}
+        <Link href="/sales-plan" className="font-medium text-primary underline">
+          {t("scenariosAuthorInSalesPlan")}
+        </Link>
+      </p>
+
+      {onCompareModeChange && onBaseScenarioChange && onCompareScenarioChange ? (
+        <ScenarioComparisonToolbar
+          compareMode={compareMode}
+          onCompareModeChange={onCompareModeChange}
+          baseScenarioId={baseScenarioId}
+          compareScenarioId={compareScenarioId}
+          onBaseChange={onBaseScenarioChange}
+          onCompareChange={onCompareScenarioChange}
+          scenarios={scenarios}
+        />
+      ) : null}
+
+      {compareMode && comparison?.phase === "ready" ? (
+        <div className="space-y-4">
+          <ScenarioDeltaKpiStrip comparison={comparison.result} />
+          <ScenarioComparisonNarrative
+            comparison={comparison.result}
+            suppressCapacityProxy={
+              operationalFeasibility?.phase === "compare_ready" &&
+              operationalFeasibility.result.suppressCapacityProxyNarrative
+            }
+          />
+          <ScenarioComparisonDiffPanel comparison={comparison.result} />
+          {attribution?.phase === "ready" ? (
+            <AssumptionAttributionPanel attribution={attribution.result} />
+          ) : null}
+          {operationalFeasibility?.phase === "compare_ready" ? (
+            <OperationalFeasibilityPanel comparison={operationalFeasibility.result} />
+          ) : null}
+        </div>
+      ) : null}
+
+      {!compareMode && operationalFeasibility?.phase === "ready" ? (
+        <OperationalFeasibilityPanel monitor={operationalFeasibility.result} />
+      ) : null}
+
+      {compareMode && comparison && comparison.phase !== "ready" && comparison.phase !== "idle" ? (
+        <p className="text-sm text-muted-foreground">
+          {comparison.phase === "blocked"
+            ? comparison.reason === "same_scenario"
+              ? tc("sameScenarioBlocked")
+              : tc("comparisonBlocked")
+            : comparison.phase === "error"
+              ? comparison.message
+              : null}
+        </p>
+      ) : null}
+
       <div className="flex flex-col gap-2 rounded-lg border border-border/60 bg-muted/30 px-4 py-3 text-sm">
         <div className="flex flex-wrap items-center gap-2">
           <p className="font-medium text-foreground">{tm("stripTitle")}</p>
@@ -129,13 +227,15 @@ export function ExecutiveDashboardContent({
         <p className="text-xs text-muted-foreground">{tm("stripSubtitle")}</p>
       </div>
 
+      {!compareMode ? (
+      <>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard
           title="Revenue (scenario)"
           value={fmt(scenarioEngine.revenue)}
-          delta={`vs base ${fmt(scenarioEngine.revenue - baseEngine.revenue)}`}
-          positive={scenarioEngine.revenue >= baseEngine.revenue}
-          explanation="Scenario-adjusted revenue after growth, conversion, and mix levers. Compare to baseline for gap analysis."
+          delta={`NP ${formatPct(scenarioEngine.npPct)}`}
+          positive={scenarioEngine.netProfit >= 0}
+          explanation="Scenario-adjusted revenue after growth, conversion, and mix levers. Use compare mode for baseline deltas."
         />
         <KpiCard
           title="Net profit"
@@ -159,7 +259,6 @@ export function ExecutiveDashboardContent({
           explanation="Uses Sales Target ≈ Fixed Costs ÷ (Contribution Margin − Target NP). Gap is target revenue minus current scenario revenue."
         />
       </div>
-
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard
           title={tp("blendedCm")}
@@ -190,6 +289,8 @@ export function ExecutiveDashboardContent({
           explanation={tp("workbookKpiExplain")}
         />
       </div>
+      </>
+      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-3">
         <KpiCard
@@ -221,8 +322,8 @@ export function ExecutiveDashboardContent({
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="border-border/60 bg-card/60 backdrop-blur">
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-base">Revenue &amp; profit curve</CardTitle>
-            <Badge variant="outline">12 mo</Badge>
+            <CardTitle className="text-base">{tf("chartTitle")}</CardTitle>
+            <Badge variant="outline">{activeScenario.name}</Badge>
           </CardHeader>
           <CardContent className="h-72 pl-0">
             <ResponsiveContainer width="100%" height="100%">
@@ -292,6 +393,15 @@ export function ExecutiveDashboardContent({
           </CardContent>
         </Card>
       </div>
+
+      {forwardForecast ? (
+        <ForwardForecastSection company={company} forwardForecast={forwardForecast} />
+      ) : (
+        <ExecutiveRollingForecastSection
+          company={company}
+          activeScenarioId={activeScenario.id}
+        />
+      )}
 
       <Card className="border-border/60 bg-card/40 backdrop-blur">
         <CardHeader>

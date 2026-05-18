@@ -28,7 +28,7 @@ import {
 import { useServiceCostCatalogSlice } from "@/hooks/use-service-cost-catalog-slice";
 import { getScenarioPresetById } from "@/lib/service-cost-simulation/scenarios";
 import { operationalPricingBasisFromSimulation } from "@/lib/commercial-pricing-intelligence/operational-basis";
-import { runCommercialPricingIntelligence } from "@/lib/commercial-pricing-intelligence/engine";
+import { compareCommercialModels } from "@/lib/planning/primitives";
 import { COMMERCIAL_RISK_PRESETS } from "@/lib/commercial-pricing-intelligence/commercial-risk";
 import {
   COMMERCIAL_PRICING_SCENARIO_PRESETS,
@@ -176,23 +176,17 @@ export function CommercialPricingIntelligenceView() {
 
   const modelStrategyCompare = useMemo(() => {
     if (!basis) return [];
-    return (Object.keys(MODEL_COMPARISON_DEFAULTS) as PricingModelId[]).map((id) => {
-      const spec = MODEL_COMPARISON_DEFAULTS[id];
-      const r = runCommercialPricingIntelligence({
-        basis,
-        model: spec,
-        activeRiskIds,
-        scenario: commercialScenario,
-        thresholds,
-      });
-      if (!r.ok) return { id, price: 0, gross: 0, contrib: 0 };
-      return {
-        id,
-        price: r.suggestedCommercialPrice,
-        gross: r.margins.grossMarginPct,
-        contrib: r.margins.contributionMarginPct,
-      };
-    });
+    return compareCommercialModels({
+      basis,
+      activeRiskIds,
+      scenario: commercialScenario,
+      thresholds,
+    }).map((row) => ({
+      id: row.id,
+      price: row.price,
+      gross: row.gross,
+      contrib: row.contrib,
+    }));
   }, [basis, activeRiskIds, commercialScenario, thresholds]);
 
   const familyEconomics = useMemo(() => {

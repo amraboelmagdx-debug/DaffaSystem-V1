@@ -1,39 +1,57 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { ScenarioSummaryCard } from "@/components/planning/scenario-summary-card";
 import { OperationalPlanningPageShell } from "@/components/platform-simplification/operational-planning-page-shell";
+import { useActivePlanningInputs } from "@/hooks/use-active-planning-inputs";
 import { usePlanningEvaluation } from "@/hooks/use-planning-evaluation";
+import { formatCurrency, formatPct } from "@/lib/calculations/engine";
 import {
   scenariosForCompany,
   streamsForCompany,
   useWorkspaceStore,
 } from "@/stores/use-workspace-store";
-import { formatCurrency, formatPct } from "@/lib/calculations/engine";
 
 export default function ScenariosPage() {
-  const { companies, selectedCompanyId, opportunities, selectedScenarioId, tierLineOverrides } =
+  const tg = useTranslations("planning.governance");
+  const { companies, selectedCompanyId, opportunities, selectedScenarioId, scenarioBundles } =
     useWorkspaceStore();
-  const company = companies.find((c) => c.id === selectedCompanyId) ?? companies[0];
-  const scenarios = company ? scenariosForCompany(company.id) : [];
-  const streams = company ? streamsForCompany(company.id) : [];
+  const anchor = companies.find((c) => c.id === selectedCompanyId) ?? companies[0];
+  const { company, tierLineOverrides } = useActivePlanningInputs(anchor?.id);
+  const scenarios = anchor ? scenariosForCompany(anchor.id) : [];
+  const streams = anchor ? streamsForCompany(anchor.id) : [];
+  const [hideArchived, setHideArchived] = useState(true);
+
+  const visibleScenarios = useMemo(
+    () =>
+      scenarios.filter((sc) => {
+        const status = scenarioBundles[sc.id]?.governance?.status;
+        return !hideArchived || status !== "archived";
+      }),
+    [scenarios, scenarioBundles, hideArchived]
+  );
 
   const evaluation = usePlanningEvaluation({
     company,
     streams,
     opportunities,
-    scenarios,
+    scenarios: visibleScenarios,
     selectedScenarioId,
     tierLineOverrides,
+    scenarioBundles,
   });
 
   const cards =
     evaluation.phase === "ready"
-      ? scenarios.flatMap((sc) => {
+      ? visibleScenarios.flatMap((sc) => {
           const out = evaluation.measures.scenarioById[sc.id];
-          if (!out) return [];
-          return [{ sc, out }];
+          const bundle = scenarioBundles[sc.id];
+          if (!out || !bundle) return [];
+          return [{ sc, out, bundle }];
         })
       : [];
 
@@ -41,22 +59,30 @@ export default function ScenariosPage() {
     <OperationalPlanningPageShell routeContext="scenarios" bannerVariant="transitional">
       <div className="mx-auto max-w-7xl space-y-6">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Scenario lab</h1>
-          <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-            Unlimited strategic scenarios with instant propagation to ROI, NP, and
-            sales coverage. Adjust levers in data seed or extend with Supabase-backed
-            scenario records.
-          </p>
+          <h1 className="text-3xl font-semibold tracking-tight">{tg("compareTitle")}</h1>
+          <p className="mt-2 max-w-3xl text-sm text-muted-foreground">{tg("compareSubtitle")}</p>
+          <div className="mt-3 flex items-center gap-2">
+            <input
+              id="hide-archived"
+              type="checkbox"
+              className="size-4 rounded border-input"
+              checked={hideArchived}
+              onChange={(e) => setHideArchived(e.target.checked)}
+            />
+            <Label htmlFor="hide-archived" className="text-sm font-normal">
+              {tg("hideArchived")}
+            </Label>
+          </div>
         </div>
         {evaluation.phase === "blocked" ? (
           <p className="text-sm text-muted-foreground">
             {evaluation.reason === "no_scenarios"
-              ? "No scenarios for this business unit. Sync or bootstrap the workspace to add a baseline scenario."
-              : "Select a business unit to compare scenarios."}
+              ? tg("noScenarios")
+              : tg("selectBu")}
           </p>
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
-            {cards.map(({ sc, out }, i) => (
+            {cards.map(({ sc, out, bundle }, i) => (
               <motion.div
                 key={sc.id}
                 initial={{ opacity: 0, y: 10 }}
@@ -64,36 +90,36 @@ export default function ScenariosPage() {
                 transition={{ delay: i * 0.05 }}
               >
                 <Card className="h-full border-border/60 bg-card/60 backdrop-blur">
-                  <CardHeader className="flex flex-row items-start justify-between gap-2">
-                    <div>
-                      <CardTitle className="text-lg">{sc.name}</CardTitle>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        NP target {formatPct(sc.npTargetPct)} · Growth adj{" "}
-                        {formatPct(sc.growthAdj)} · Fixed cost adj {formatPct(sc.fixedCostAdj)}
-                      </p>
-                    </div>
-                    {sc.baseline ? (
-                      <Badge>Baseline</Badge>
-                    ) : (
-                      <Badge variant="secondary">Alt</Badge>
-                    )}
+                  <CardHeader className="space-y-3">
+                    <ScenarioSummaryCard
+                      bundle={bundle}
+                      bundlesById={scenarioBundles}
+                      active={sc.id === selectedScenarioId}
+                    />
                   </CardHeader>
-                  <CardContent className="grid grid-cols-2 gap-4 text-sm">
+                  <CardContent className="grid grid-cols-2 gap-4 border-t border-border/50 pt-4 text-sm">
                     <div>
-                      <p className="text-muted-foreground">Revenue</p>
+                      <p className="text-muted-foreground">{tg("kpiRevenue")}</p>
                       <p className="text-lg font-semibold">{formatCurrency(out.revenue)}</p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground">Net profit</p>
+                      <p className="text-muted-foreground">{tg("kpiNetProfit")}</p>
                       <p className="text-lg font-semibold">{formatCurrency(out.netProfit)}</p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground">ROI</p>
+                      <p className="text-muted-foreground">{tg("kpiRoi")}</p>
                       <p className="text-lg font-semibold">{formatPct(out.roi)}</p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground">Sales gap</p>
+                      <p className="text-muted-foreground">{tg("kpiSalesGap")}</p>
                       <p className="text-lg font-semibold">{formatCurrency(out.salesNeededGap)}</p>
+                    </div>
+                    <div className="col-span-2 text-xs text-muted-foreground">
+                      {tg("leverSummary", {
+                        np: formatPct(sc.npTargetPct),
+                        growth: formatPct(sc.growthAdj),
+                        fixed: formatPct(sc.fixedCostAdj),
+                      })}
                     </div>
                   </CardContent>
                 </Card>

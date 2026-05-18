@@ -3,8 +3,9 @@
 import { useMemo } from "react";
 import type { DemoCompany, DemoOpportunity, DemoRevenueStream, DemoScenario } from "@/types/domain";
 import type { TierLine } from "@/lib/planning/workbook-engine";
+import type { ScenarioPlanningBundle } from "@/types/planning-scenario";
 import {
-  evaluateExecutiveWorkspaceMeasures,
+  evaluateEconomicsGraph,
   resolvePlanningEvaluation,
   type ExecutiveWorkspaceMeasuresResult,
   type PlanningEvaluationBlockReason,
@@ -17,6 +18,7 @@ export type UsePlanningEvaluationInput = {
   scenarios: DemoScenario[];
   selectedScenarioId: string;
   tierLineOverrides: Record<string, TierLine[]>;
+  scenarioBundles?: Record<string, ScenarioPlanningBundle>;
 };
 
 export type PlanningEvaluationPhase =
@@ -35,6 +37,7 @@ export function usePlanningEvaluation(input: UsePlanningEvaluationInput): Planni
     scenarios,
     selectedScenarioId,
     tierLineOverrides,
+    scenarioBundles,
   } = input;
 
   return useMemo(() => {
@@ -45,13 +48,14 @@ export function usePlanningEvaluation(input: UsePlanningEvaluationInput): Planni
       scenarios,
       activeScenarioId: selectedScenarioId,
       tierLineOverrides,
+      scenarioBundles,
     });
 
     if (resolution.status === "blocked") {
       return { phase: "blocked", reason: resolution.reason };
     }
 
-    const measures = evaluateExecutiveWorkspaceMeasures(resolution.context);
+    const measures = evaluateEconomicsGraph(resolution.context).measures;
     return {
       phase: "ready",
       measures,
@@ -64,5 +68,6 @@ export function usePlanningEvaluation(input: UsePlanningEvaluationInput): Planni
     scenarios,
     selectedScenarioId,
     tierLineOverrides,
+    scenarioBundles,
   ]);
 }

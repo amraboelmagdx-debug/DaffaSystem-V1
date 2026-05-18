@@ -37,10 +37,15 @@ import {
   yearlyBurnFromMonthly,
 } from "@/lib/sales-plan/engine";
 import { cn } from "@/lib/utils";
-import { OperationalBuToolbar } from "@/components/operational-workspace/operational-bu-toolbar";
+import { PlanningSessionHeader } from "@/components/sales-plan/planning-session-header";
+import { ScenarioSummaryList } from "@/components/sales-plan/scenario-summary-list";
 import { OperationalWorkspaceGate } from "@/components/operational-workspace/operational-workspace-gate";
 import { useOperationalWorkspace } from "@/hooks/use-operational-workspace";
-import { streamsForCompany } from "@/stores/use-workspace-store";
+import {
+  scenariosForCompany,
+  streamsForCompany,
+  useWorkspaceStore,
+} from "@/stores/use-workspace-store";
 import { useSalesPlanWizardStore } from "@/stores/use-sales-plan-wizard-store";
 import type { OpportunityTierKey } from "@/types/sales-plan";
 
@@ -83,21 +88,28 @@ export function SalesPlanWizard() {
   const demoStreams = company ? streamsForCompany(company.id) : [];
 
   const wizard = useSalesPlanWizardStore();
-  const savePlanToWorkspaceAsNewCompany = useSalesPlanWizardStore((s) => s.savePlanToWorkspaceAsNewCompany);
-  const [saveFeedback, setSaveFeedback] = useState<{ text: string; ok: boolean } | null>(null);
-  const hydrateOpportunityTiersFromWorkspaceCompany = useSalesPlanWizardStore(
-    (s) => s.hydrateOpportunityTiersFromWorkspaceCompany
+  const savePlanToSelectedOperationalUnit = useSalesPlanWizardStore(
+    (s) => s.savePlanToSelectedOperationalUnit
   );
+  const savePlanAsNewScenario = useSalesPlanWizardStore((s) => s.savePlanAsNewScenario);
+  const hydrateFromActiveScenario = useSalesPlanWizardStore((s) => s.hydrateFromActiveScenario);
   const seedProductsFromStreams = useSalesPlanWizardStore((s) => s.seedProductsFromStreams);
   const wizardProducts = useSalesPlanWizardStore((s) => s.products);
-  const lastHydratedCompanyId = useRef<string | null>(null);
+  const selectedScenarioId = useWorkspaceStore((s) => s.selectedScenarioId);
+  const setScenario = useWorkspaceStore((s) => s.setScenario);
+  const scenarios = company ? scenariosForCompany(company.id) : [];
+  const [saveFeedback, setSaveFeedback] = useState<{ text: string; ok: boolean } | null>(null);
+  const lastHydratedKey = useRef("");
+
+  const canSave = Boolean(company && selectedScenarioId && wizard.products.length > 0);
 
   useEffect(() => {
     if (!company?.id) return;
-    if (lastHydratedCompanyId.current === company.id) return;
-    lastHydratedCompanyId.current = company.id;
-    hydrateOpportunityTiersFromWorkspaceCompany();
-  }, [company?.id, hydrateOpportunityTiersFromWorkspaceCompany]);
+    const key = `${company.id}:${selectedScenarioId}`;
+    if (lastHydratedKey.current === key) return;
+    lastHydratedKey.current = key;
+    hydrateFromActiveScenario();
+  }, [company?.id, selectedScenarioId, hydrateFromActiveScenario]);
 
   useEffect(() => {
     if (!company?.id || demoStreams.length === 0) return;
@@ -222,8 +234,7 @@ export function SalesPlanWizard() {
           "p-6 shadow-sm sm:p-8"
         )}
       >
-        <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between lg:gap-10">
-          <header className="min-w-0 flex-1 space-y-4">
+        <header className="space-y-4">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="outline" className="font-normal">
                 {t("badge")}
@@ -236,76 +247,58 @@ export function SalesPlanWizard() {
             <p className="text-pretty max-w-[62ch] text-[15px] leading-relaxed text-muted-foreground sm:text-base">
               {t("subtitle")}
             </p>
-          </header>
-          <div className="w-full shrink-0 space-y-3 border-t border-border/50 pt-6 lg:w-auto lg:max-w-md lg:border-s lg:border-t-0 lg:ps-8 lg:pt-0">
-            <OperationalBuToolbar className="lg:items-end" selectClassName="lg:ms-auto" />
-            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-              <div className="flex items-center gap-1.5 rounded-md border border-violet-500/20 bg-violet-500/5 px-2 py-1">
-                <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
-                  <input
-                    type="checkbox"
-                    className="h-3.5 w-3.5 rounded border-border accent-primary"
-                    checked={wizard.showAdvancedEnterpriseUi ?? false}
-                    onChange={(e) => wizard.setShowAdvancedEnterpriseUi(e.target.checked)}
-                  />
-                  {t("advanced.toggleLabel")}
-                </label>
-                <InsightBulb label={t("advanced.toggleBulbTitle")} description={t("advanced.toggleBulbBody")} />
-              </div>
-              <Button
-                type="button"
-                variant="default"
-                size="sm"
-                disabled={!wizard.meta.portfolioName?.trim() || wizard.products.length === 0}
-                onClick={() => {
-                  const ok = savePlanToWorkspaceAsNewCompany();
-                  setSaveFeedback({
-                    text: ok ? t("saveWorkspaceSuccess") : t("saveWorkspaceNeedName"),
-                    ok,
-                  });
-                  window.setTimeout(() => setSaveFeedback(null), 6000);
-                }}
-              >
-                {t("saveWorkspace")}
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => wizard.applyPlanToWorkspace()}
-              >
-                {t("applyWorkspace")}
-              </Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => wizard.normalizeMarketSegments()}>
-                {t("normalizeSegments")}
-              </Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => wizard.normalizeAllTierMixes()}>
-                {t("normalizeTierMixAll")}
-              </Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => wizard.resetWizard()}>
-                {t("reset")}
-              </Button>
-            </div>
-            <div className="rounded-xl border border-border/50 bg-muted/25 p-3 text-xs leading-relaxed text-muted-foreground lg:text-end">
-              <span className="font-medium text-foreground">{t("saveWorkspaceHint")}</span>
-              <span className="mx-1 text-border">·</span>
-              <span>{t("applyWorkspaceHint")}</span>
-            </div>
-            {saveFeedback ? (
-              <p
-                className={cn(
-                  "rounded-lg px-3 py-2 text-xs font-medium lg:text-end",
-                  saveFeedback.ok
-                    ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-                    : "bg-rose-500/10 text-rose-700 dark:text-rose-400"
-                )}
-              >
-                {saveFeedback.text}
-              </p>
-            ) : null}
-          </div>
-        </div>
+        </header>
       </section>
+
+      <PlanningSessionHeader
+        companyId={company.id}
+        companyName={company.name}
+        canSave={canSave}
+        saveFeedback={saveFeedback}
+        onSave={() => {
+          const ok = savePlanToSelectedOperationalUnit();
+          setSaveFeedback({
+            text: ok ? t("saveWorkspaceSuccess") : t("session.saveFailed"),
+            ok,
+          });
+          window.setTimeout(() => setSaveFeedback(null), 6000);
+        }}
+        onSaveAs={(name) => {
+          const ok = savePlanAsNewScenario(name);
+          setSaveFeedback({
+            text: ok ? t("session.saveAsSuccess") : t("session.saveFailed"),
+            ok,
+          });
+          window.setTimeout(() => setSaveFeedback(null), 6000);
+        }}
+        onApply={() => wizard.applyPlanToWorkspace()}
+      />
+
+      <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
+        <div className="min-w-0 space-y-6">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-1.5 rounded-md border border-violet-500/20 bg-violet-500/5 px-2 py-1">
+          <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              className="h-3.5 w-3.5 rounded border-border accent-primary"
+              checked={wizard.showAdvancedEnterpriseUi ?? false}
+              onChange={(e) => wizard.setShowAdvancedEnterpriseUi(e.target.checked)}
+            />
+            {t("advanced.toggleLabel")}
+          </label>
+          <InsightBulb label={t("advanced.toggleBulbTitle")} description={t("advanced.toggleBulbBody")} />
+        </div>
+        <Button type="button" variant="outline" size="sm" onClick={() => wizard.normalizeMarketSegments()}>
+          {t("normalizeSegments")}
+        </Button>
+        <Button type="button" variant="outline" size="sm" onClick={() => wizard.normalizeAllTierMixes()}>
+          {t("normalizeTierMixAll")}
+        </Button>
+        <Button type="button" variant="outline" size="sm" onClick={() => wizard.resetWizard()}>
+          {t("reset")}
+        </Button>
+      </div>
 
       <div className="flex flex-wrap gap-1.5 border-b border-border/60 pb-3">
         {WIZARD_STEP_TITLE_KEYS.map((key: WizardStepTitleKey, i: number) => {
@@ -366,16 +359,13 @@ export function SalesPlanWizard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2 sm:col-span-2">
-              <div className="flex items-center gap-2">
-                <Label>{t("portfolioName")}</Label>
-                <InsightBulb label={t("insight.portfolioTitle")} description={t("insight.portfolioBody")} />
-              </div>
-              <Input
-                value={wizard.meta.portfolioName}
-                onChange={(e) => wizard.setMeta({ portfolioName: e.target.value })}
-                placeholder={t("portfolioPlaceholder")}
-              />
+            <div className="space-y-2 sm:col-span-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
+              <p className="text-xs text-muted-foreground">{t("session.contextLabel")}</p>
+              <p className="text-sm font-medium">{company.name}</p>
+              <p className="text-xs text-muted-foreground">
+                {t("session.activeScenarioLabel")}:{" "}
+                {scenarios.find((s) => s.id === selectedScenarioId)?.name ?? "—"}
+              </p>
             </div>
             <div className="space-y-2">
               <div className="flex items-center gap-2">
@@ -395,13 +385,6 @@ export function SalesPlanWizard() {
               <Input
                 value={wizard.meta.currency}
                 onChange={(e) => wizard.setMeta({ currency: e.target.value.toUpperCase() })}
-              />
-            </div>
-            <div className="space-y-2 sm:col-span-2">
-              <Label>{t("planningScenario")}</Label>
-              <Input
-                value={wizard.meta.planningScenarioName}
-                onChange={(e) => wizard.setMeta({ planningScenarioName: e.target.value })}
               />
             </div>
           </CardContent>
@@ -1480,6 +1463,14 @@ export function SalesPlanWizard() {
           </CardContent>
         </Card>
       )}
+
+        </div>
+        <ScenarioSummaryList
+          scenarios={scenarios}
+          activeScenarioId={selectedScenarioId}
+          onSelectScenario={setScenario}
+        />
+      </div>
 
       <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 border-t border-border/60 bg-background/90 px-4 py-3 backdrop-blur-md pointer-events-auto">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 text-xs">

@@ -36,6 +36,13 @@ export const MEASURE_ID = {
 
   FORECAST_ACHIEVEMENT_PROXY: "exec.forecastAchievement.planProxy",
 
+  /** Forward forecast engine (`evaluateForwardForecast`). */
+  FORECAST_MONTHS_TO_TARGET: "forecast.targets.monthsToTarget",
+  FORECAST_FIRST_SATURATION_MONTH: "forecast.operational.firstSaturationMonth",
+  FORECAST_MARGIN_TREND_PCT: "forecast.financial.marginTrendPct",
+  FORECAST_END_REVENUE: "forecast.financial.endRevenue",
+  FORECAST_TARGET_ATTAINMENT_PCT: "forecast.targets.attainmentPct",
+
   /** Sales Plan OS — annual SAR totals from `buildSalesPlanModel`. */
   SALES_PLAN_REVENUE_ANNUAL_SAR: "salesPlan.revenue.annualSar",
   SALES_PLAN_AWARDS_ANNUAL: "salesPlan.awards.annualRequired",
@@ -58,6 +65,12 @@ export const MEASURE_ID = {
   DEAL_LOADED_COST: "deal.loadedCost",
   DEAL_SUGGESTED_PRICE: "deal.suggestedPrice",
   DEAL_TOTAL_QUANTITY: "deal.totalQuantity",
+
+  /** HR-backed operational feasibility (evaluateOperationalFeasibility). */
+  OPERATIONAL_UTILIZATION_PCT: "operational.utilizationPct",
+  OPERATIONAL_DEMAND_HOURS: "operational.demandHours",
+  OPERATIONAL_SUPPLY_HOURS: "operational.supplyHours",
+  OPERATIONAL_HIRING_FTE_GAP: "operational.hiringFteGap",
 } as const;
 
 export type MeasureId = (typeof MEASURE_ID)[keyof typeof MEASURE_ID];

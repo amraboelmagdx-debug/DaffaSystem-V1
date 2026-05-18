@@ -3,6 +3,7 @@ import { hrHydrationDebugLog } from "@/lib/persistence/hr-hydration-debug";
 import { shouldHydrateWorkspaceFromServer } from "@/lib/persistence/persist-mode";
 import {
   applyPlanningClientModelToWorkspaceState,
+  buildScenarioBundlesFromServer,
   mapPlanningDtoToClientModel,
 } from "@/lib/planning/workspace-from-server";
 import { activeOperationalUnits } from "@/lib/platform-economics/operational-unit";
@@ -65,15 +66,23 @@ export async function refreshPlanningWorkspaceFromServer(): Promise<boolean> {
     dto,
     dto.company_hr_links ?? []
   );
-  const next = applyPlanningClientModelToWorkspaceState(model);
+  const priorBundles = useWorkspaceStore.getState().scenarioBundles;
+  const scenarioBundles = buildScenarioBundlesFromServer(
+    dto,
+    model.companies,
+    model.scenarios,
+    priorBundles,
+    model.streams.map((s) => s.id)
+  );
+  const next = applyPlanningClientModelToWorkspaceState(model, { scenarioBundles });
   useWorkspaceStore.setState({
     companies: next.companies,
     streams: next.streams,
     scenarios: next.scenarios,
+    scenarioBundles: next.scenarioBundles,
     opportunities: next.opportunities,
     selectedCompanyId: next.selectedCompanyId,
     selectedScenarioId: next.selectedScenarioId,
-    tierLineOverrides: useWorkspaceStore.getState().tierLineOverrides,
   });
   return true;
 }

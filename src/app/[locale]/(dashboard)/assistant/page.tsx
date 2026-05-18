@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { applyScenario, runForecastEngine } from "@/lib/calculations/engine";
 import { weightedRevenue } from "@/lib/calculations/pipeline";
+import {
+  evaluatePlanningMeasures,
+  resolvePlanningEvaluation,
+} from "@/lib/planning/measures";
 import { resolveBusinessUnitIdForCompany } from "@/lib/platform-economics/operational-unit";
 import {
   scenariosForCompany,
@@ -23,9 +26,42 @@ export default function AssistantPage() {
     actions: string[];
   } | null>(null);
 
-  const { companies, selectedCompanyId, opportunities, selectedScenarioId } =
-    useWorkspaceStore();
+  const {
+    companies,
+    selectedCompanyId,
+    opportunities,
+    selectedScenarioId,
+    streams,
+    scenarios,
+    scenarioBundles,
+  } = useWorkspaceStore();
   const company = companies.find((c) => c.id === selectedCompanyId) ?? companies[0];
+
+  const evaluation = useMemo(() => {
+    if (!company) return null;
+    const companyStreams = streamsForCompany(company.id);
+    const companyScenarios = scenariosForCompany(company.id);
+    const resolution = resolvePlanningEvaluation({
+      company,
+      streams: companyStreams,
+      opportunities,
+      scenarios: companyScenarios,
+      activeScenarioId: selectedScenarioId,
+      tierLineOverrides: scenarioBundles[selectedScenarioId]?.tierLineOverrides ?? {},
+      scenarioBundles,
+    });
+    if (resolution.status === "blocked") return null;
+    const measures = evaluatePlanningMeasures(resolution.context);
+    return { measures, activeScenario: resolution.activeScenario };
+  }, [
+    company,
+    opportunities,
+    selectedScenarioId,
+    streams,
+    scenarios,
+    scenarioBundles,
+  ]);
+
   if (!company) {
     return (
       <div className="mx-auto max-w-2xl p-8 text-center text-sm text-muted-foreground">
@@ -33,48 +69,18 @@ export default function AssistantPage() {
       </div>
     );
   }
+
   const hrBusinessUnitId =
     company.hrBusinessUnitId ?? resolveBusinessUnitIdForCompany(company.id, companies);
-  const streams = streamsForCompany(company.id);
-  const scenario =
-    scenariosForCompany(company.id).find((s) => s.id === selectedScenarioId) ??
-    scenariosForCompany(company.id)[0];
   const weightedPipeline = opportunities
     .filter((o) => o.companyId === company.id)
     .reduce((s, o) => s + weightedRevenue(o), 0);
-  const cm =
-    streams.length > 0
-      ? streams.reduce((a, s) => a + s.revenueWeight * s.contributionMarginPct, 0) /
-        streams.reduce((a, s) => a + s.revenueWeight, 0)
-      : company.contributionMarginPct;
-  const engine = applyScenario(
-    {
-      fixedCostsMonthly: company.fixedCostsMonthly,
-      contributionMarginPct: cm,
-      targetNpPct: company.npTargetPct,
-      revenueMonthly: company.revenueMonthly,
-    },
-    {
-      npTargetPct: scenario.npTargetPct,
-      revenueMixAdj: scenario.revenueMixAdj,
-      conversionRateAdj: scenario.conversionRateAdj,
-      fixedCostAdj: scenario.fixedCostAdj,
-      growthAdj: scenario.growthAdj,
-      pipelineWeightAdj: scenario.pipelineWeightAdj,
-    },
-    weightedPipeline
-  );
-  const base = runForecastEngine(
-    {
-      fixedCostsMonthly: company.fixedCostsMonthly,
-      contributionMarginPct: cm,
-      targetNpPct: company.npTargetPct,
-      revenueMonthly: company.revenueMonthly,
-    },
-    { weightedPipeline }
-  );
+
+  const base = evaluation?.measures.baseEngine;
+  const engine = evaluation?.measures.activeEngine;
 
   const ask = async () => {
+    if (!engine) return;
     setLoading(true);
     try {
       const res = await fetch("/api/assistant", {
@@ -114,12 +120,18 @@ export default function AssistantPage() {
       <Card className="border-border/60 bg-card/60 backdrop-blur">
         <CardHeader className="flex flex-row flex-wrap items-center gap-2">
           <CardTitle className="text-base">Live context</CardTitle>
-          <Badge variant="secondary">ROI {base.roi.toFixed(2)}</Badge>
-          <Badge variant="outline">Scenario Δ NP {(engine.npPct - base.npPct).toFixed(3)}</Badge>
+          {base && engine && (
+            <>
+              <Badge variant="secondary">ROI {base.roi.toFixed(2)}</Badge>
+              <Badge variant="outline">
+                Scenario Δ NP {(engine.npPct - base.npPct).toFixed(3)}
+              </Badge>
+            </>
+          )}
         </CardHeader>
         <CardContent className="space-y-3">
           <Input value={q} onChange={(e) => setQ(e.target.value)} />
-          <Button onClick={ask} disabled={loading}>
+          <Button onClick={ask} disabled={loading || !engine}>
             {loading ? "Analyzing…" : "Ask"}
           </Button>
         </CardContent>

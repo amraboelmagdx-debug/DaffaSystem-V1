@@ -1,8 +1,18 @@
+import {
+  bundleFromAssumptionsPayload,
+  createBundleFromCompany,
+  rebuildBundlesFromHydrated,
+} from "@/lib/planning/scenario";
+import type { ScenarioBundleAssumptionsPayload } from "@/types/planning-scenario";
 import type { PlanningWorkspaceDTO } from "@/server/planning/workspace";
 import type { DemoCompany, DemoOpportunity, DemoRevenueStream, DemoScenario } from "@/types/domain";
 import type { OpportunityStage } from "@/types/domain";
 import { partitionOperationalUnits } from "@/lib/platform-economics/operational-unit";
 import type { PlanningWorkspaceClientModel } from "@/lib/platform-economics/types";
+import {
+  mergeTierLineOverridesWithServer,
+  serverTierOverridesForWorkspace,
+} from "@/lib/planning/workspace-tier-hydration";
 
 function metaField(meta: unknown, key: string): string | undefined {
   if (!meta || typeof meta !== "object" || Array.isArray(meta)) return undefined;
@@ -63,10 +73,7 @@ export function mapPlanningDtoToClientModel(
   }));
 
   const scenarios: DemoScenario[] = (dto.scenarios ?? []).map((sc) => {
-    const a =
-      sc.assumptions && typeof sc.assumptions === "object" && !Array.isArray(sc.assumptions)
-        ? (sc.assumptions as Record<string, number>)
-        : {};
+    const a = parseScenarioAssumptions(sc.assumptions);
     return {
       id: String(sc.id),
       companyId: String(sc.company_id),
@@ -116,10 +123,98 @@ export function mapPlanningDtoToClientModel(
   };
 }
 
-export function applyPlanningClientModelToWorkspaceState(model: PlanningWorkspaceClientModel): {
+function parseScenarioAssumptions(raw: unknown): Partial<ScenarioBundleAssumptionsPayload> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  return raw as Partial<ScenarioBundleAssumptionsPayload>;
+}
+
+export function buildScenarioBundlesFromServer(
+  dto: PlanningWorkspaceDTO,
+  companies: DemoCompany[],
+  scenarios: DemoScenario[],
+  priorBundles?: Record<string, import("@/types/planning-scenario").ScenarioPlanningBundle>,
+  streamIds?: string[]
+): Record<string, import("@/types/planning-scenario").ScenarioPlanningBundle> {
+  const companyById = new Map(companies.map((c) => [c.id, c]));
+  const rows = dto.scenarios ?? [];
+  const bundles: Record<string, import("@/types/planning-scenario").ScenarioPlanningBundle> = {
+    ...(priorBundles ?? {}),
+  };
+  const serverTierByStream =
+    streamIds && streamIds.length > 0
+      ? serverTierOverridesForWorkspace(dto, streamIds)
+      : {};
+
+  for (const sc of scenarios) {
+    const row = rows.find((r) => String(r.id) === sc.id);
+    const company = companyById.get(sc.companyId);
+    const rawAssumptions = row?.assumptions;
+    const parsed = parseScenarioAssumptions(rawAssumptions);
+    const hasOverlay =
+      parsed.companyOverlay &&
+      typeof parsed.companyOverlay === "object" &&
+      !Array.isArray(parsed.companyOverlay);
+
+    if (hasOverlay) {
+      const payload: ScenarioBundleAssumptionsPayload = {
+        npTargetPct: Number(parsed.npTargetPct ?? sc.npTargetPct),
+        revenueMixAdj: Number(parsed.revenueMixAdj ?? sc.revenueMixAdj),
+        conversionRateAdj: Number(parsed.conversionRateAdj ?? sc.conversionRateAdj),
+        fixedCostAdj: Number(parsed.fixedCostAdj ?? sc.fixedCostAdj),
+        growthAdj: Number(parsed.growthAdj ?? sc.growthAdj),
+        pipelineWeightAdj: Number(parsed.pipelineWeightAdj ?? sc.pipelineWeightAdj),
+        companyOverlay: parsed.companyOverlay!,
+        tierLineOverrides: mergeTierLineOverridesWithServer(
+          parsed.tierLineOverrides,
+          serverTierByStream
+        ),
+        parentScenarioId:
+          parsed.parentScenarioId ??
+          (row?.parent_scenario_id ? String(row.parent_scenario_id) : null),
+        version: Number(parsed.version ?? row?.version ?? 1),
+        clientUpdatedAt: String(parsed.clientUpdatedAt ?? new Date().toISOString()),
+        description: parsed.description,
+        governance: parsed.governance,
+      };
+      bundles[sc.id] = bundleFromAssumptionsPayload(sc, payload, company);
+      continue;
+    }
+
+    if (bundles[sc.id]) {
+      const existing = bundles[sc.id]!;
+      bundles[sc.id] = {
+        ...existing,
+        scenario: { ...sc },
+        tierLineOverrides: mergeTierLineOverridesWithServer(
+          existing.tierLineOverrides,
+          serverTierByStream
+        ),
+      };
+    } else if (company) {
+      const created = createBundleFromCompany(company, sc);
+      bundles[sc.id] = {
+        ...created,
+        tierLineOverrides: mergeTierLineOverridesWithServer(
+          created.tierLineOverrides,
+          serverTierByStream
+        ),
+      };
+    }
+  }
+
+  return bundles;
+}
+
+export function applyPlanningClientModelToWorkspaceState(
+  model: PlanningWorkspaceClientModel,
+  options?: {
+    scenarioBundles?: Record<string, import("@/types/planning-scenario").ScenarioPlanningBundle>;
+  }
+): {
   companies: DemoCompany[];
   streams: DemoRevenueStream[];
   scenarios: DemoScenario[];
+  scenarioBundles: Record<string, import("@/types/planning-scenario").ScenarioPlanningBundle>;
   opportunities: DemoOpportunity[];
   selectedCompanyId: string;
   selectedScenarioId: string;
@@ -138,10 +233,14 @@ export function applyPlanningClientModelToWorkspaceState(model: PlanningWorkspac
   const selectedCompanyId = linked[0]?.id ?? companies[0]?.id ?? "";
   const scenariosForCo = scenarios.filter((s) => s.companyId === selectedCompanyId);
   const selectedScenarioId = scenariosForCo[0]?.id ?? scenarios[0]?.id ?? "";
+  const scenarioBundles =
+    options?.scenarioBundles ??
+    rebuildBundlesFromHydrated({ companies, scenarios });
   return {
     companies,
     streams,
     scenarios,
+    scenarioBundles,
     opportunities,
     selectedCompanyId,
     selectedScenarioId,

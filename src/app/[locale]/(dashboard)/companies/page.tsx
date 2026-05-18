@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -16,6 +16,7 @@ import { OperationalWorkspaceGate } from "@/components/operational-workspace/ope
 import { SampleDataPanel } from "@/components/sample-data/sample-data-panel";
 import { useOperationalWorkspace } from "@/hooks/use-operational-workspace";
 import { isOrphanOperationalUnit } from "@/lib/platform-economics/operational-unit";
+import { useActivePlanningInputs } from "@/hooks/use-active-planning-inputs";
 import { streamsForCompany, useWorkspaceStore } from "@/stores/use-workspace-store";
 import { formatCurrency, formatPct } from "@/lib/calculations/engine";
 import type { OpportunityTierDefinition } from "@/types/sales-plan";
@@ -33,11 +34,13 @@ type FormValues = z.infer<typeof schema>;
 
 export default function CompaniesPage() {
   const locale = useLocale();
+  const td = useTranslations("dashboard");
   const { linkedUnits, orphanUnits, selectedUnit, setCompany, isReady } =
     useOperationalWorkspace();
-  const updateCompany = useWorkspaceStore((s) => s.updateCompany);
-  const company = selectedUnit;
-  const streams = company ? streamsForCompany(company.id) : [];
+  const updateActiveScenarioOverlay = useWorkspaceStore((s) => s.updateActiveScenarioOverlay);
+  const anchorCompany = selectedUnit;
+  const { company } = useActivePlanningInputs(anchorCompany?.id);
+  const streams = anchorCompany ? streamsForCompany(anchorCompany.id) : [];
 
   const [tierBands, setTierBands] = useState<OpportunityTierDefinition[]>(() =>
     mergeOpportunityTiersWithDefaults(company?.opportunityTiers)
@@ -70,8 +73,8 @@ export default function CompaniesPage() {
   });
 
   const onSubmit = form.handleSubmit((data) => {
-    if (!company) return;
-    updateCompany(company.id, data);
+    if (!anchorCompany) return;
+    updateActiveScenarioOverlay(data);
   });
 
   if (!isReady) {
@@ -103,11 +106,21 @@ export default function CompaniesPage() {
         </p>
       </div>
 
+      <p className="rounded-lg border border-border/60 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+        {td("scenariosMonitorHint")}{" "}
+        <Link href={`/${locale}/sales-plan`} className="font-medium text-primary underline">
+          {td("scenariosAuthorInSalesPlan")}
+        </Link>
+        . {td("companiesTransitionalEdit")}
+      </p>
+
       {orphanUnits.length > 0 && (
         <p className="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-muted-foreground">
           {orphanUnits.length} workspace unit(s) are not linked to HR — sync from HR → Organization
           or archive them. New Sales Plan saves require a linked unit.
-          {company && isOrphanOperationalUnit(company) ? " The selected unit is orphaned." : ""}
+          {anchorCompany && isOrphanOperationalUnit(anchorCompany)
+            ? " The selected unit is orphaned."
+            : ""}
         </p>
       )}
 
@@ -115,7 +128,7 @@ export default function CompaniesPage() {
         {linkedUnits.map((c) => (
           <Button
             key={c.id}
-            variant={c.id === company.id ? "default" : "outline"}
+            variant={c.id === anchorCompany?.id ? "default" : "outline"}
             size="sm"
             onClick={() => setCompany(c.id)}
           >
@@ -242,7 +255,7 @@ export default function CompaniesPage() {
           <Button
             type="button"
             onClick={() =>
-              updateCompany(company.id, {
+              updateActiveScenarioOverlay({
                 opportunityTiers: mergeOpportunityTiersWithDefaults(tierBands).map((t) => ({
                   ...t,
                 })),

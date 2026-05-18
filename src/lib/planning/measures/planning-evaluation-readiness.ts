@@ -33,6 +33,7 @@ export type ResolvePlanningEvaluationInput = {
   scenarios: DemoScenario[];
   activeScenarioId: string;
   tierLineOverrides: PlanningContext["tierLineOverrides"];
+  scenarioBundles?: PlanningContext["scenarioBundles"];
 };
 
 /**
@@ -74,6 +75,7 @@ export function resolvePlanningEvaluation(
     scenarios: input.scenarios,
     activeScenarioId: activeScenario.id,
     tierLineOverrides: input.tierLineOverrides,
+    scenarioBundles: input.scenarioBundles,
   });
 
   return { status: "ready", context, activeScenario };

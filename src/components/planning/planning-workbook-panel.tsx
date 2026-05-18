@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useActivePlanningInputs } from "@/hooks/use-active-planning-inputs";
 import {
   scenariosForCompany,
   streamsForCompany,
@@ -35,13 +36,14 @@ export function PlanningWorkbookPanel() {
     companies,
     selectedCompanyId,
     selectedScenarioId,
-    tierLineOverrides,
     setTierLinesForStream,
-    updateCompany,
+    updateActiveScenarioOverlay,
     resetTierLinesForCompany,
   } = useWorkspaceStore();
 
-  const company = companies.find((c) => c.id === selectedCompanyId) ?? companies[0];
+  const anchor = companies.find((c) => c.id === selectedCompanyId) ?? companies[0];
+  const { company, tierLineOverrides } = useActivePlanningInputs(anchor?.id);
+  if (!company) return null;
   const scenarios = scenariosForCompany(company.id);
   const scenario = scenarios.find((s) => s.id === selectedScenarioId) ?? scenarios[0];
   const streams = streamsForCompany(company.id);
@@ -113,7 +115,7 @@ export function PlanningWorkbookPanel() {
               className="h-9"
               value={Math.round(company.fixedCostsMonthly)}
               onChange={(e) =>
-                updateCompany(company.id, {
+                updateActiveScenarioOverlay({
                   fixedCostsMonthly: Math.max(0, Number(e.target.value) || 0),
                 })
               }

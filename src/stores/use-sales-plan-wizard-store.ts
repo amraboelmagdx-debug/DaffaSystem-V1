@@ -9,7 +9,7 @@ import { getActiveOrganizationId } from "@/lib/persistence/active-tenant";
 import { isLinkedOperationalUnit } from "@/lib/platform-economics/operational-unit";
 import { buildSalesPlanModel } from "@/lib/sales-plan/build-model";
 import { sumMonthlyFixedCosts, weightedBlendedCm } from "@/lib/sales-plan/engine";
-import { useWorkspaceStore } from "@/stores/use-workspace-store";
+import { getEffectiveCompanyForPlanning, useWorkspaceStore } from "@/stores/use-workspace-store";
 import type { DemoCompany, DemoRevenueStream, DemoScenario } from "@/types/domain";
 import type {
   ContributionCell,
@@ -156,9 +156,12 @@ interface SalesPlanWizardState {
   applyPlanToWorkspace: () => void;
   /** Merges wizard into the selected HR-linked business unit; returns false if validation fails. */
   savePlanToSelectedOperationalUnit: () => boolean;
+  savePlanToScenarioId: (scenarioId: string) => boolean;
+  savePlanAsNewScenario: (name: string) => boolean;
   /** @deprecated Use savePlanToSelectedOperationalUnit */
   savePlanToWorkspaceAsNewCompany: () => boolean;
   hydrateOpportunityTiersFromWorkspaceCompany: () => void;
+  hydrateFromActiveScenario: () => void;
   setShowAdvancedEnterpriseUi: (v: boolean) => void;
 }
 
@@ -190,8 +193,11 @@ function buildInitial(): Omit<
   | "normalizeTierMixForService"
   | "applyPlanToWorkspace"
   | "savePlanToSelectedOperationalUnit"
+  | "savePlanToScenarioId"
+  | "savePlanAsNewScenario"
   | "savePlanToWorkspaceAsNewCompany"
   | "hydrateOpportunityTiersFromWorkspaceCompany"
+  | "hydrateFromActiveScenario"
   | "setShowAdvancedEnterpriseUi"
 > {
   return {
@@ -385,11 +391,21 @@ export const useSalesPlanWizardStore = create<SalesPlanWizardState>()(
         set({ tierMixByService: next });
       },
       hydrateOpportunityTiersFromWorkspaceCompany: () => {
-        const { companies, selectedCompanyId } = useWorkspaceStore.getState();
-        const company = companies.find((c) => c.id === selectedCompanyId) ?? companies[0];
+        get().hydrateFromActiveScenario();
+      },
+      hydrateFromActiveScenario: () => {
+        const ws = useWorkspaceStore.getState();
+        const company = getEffectiveCompanyForPlanning(ws, ws.selectedCompanyId);
+        const bundle = ws.scenarioBundles[ws.selectedScenarioId];
         if (!company) return;
         set({
+          npTargetPct: company.npTargetPct,
           opportunityTiers: mergeOpportunityTiersWithDefaults(company.opportunityTiers),
+          meta: {
+            ...get().meta,
+            portfolioName: company.name,
+            planningScenarioName: bundle?.scenario.name ?? get().meta.planningScenarioName,
+          },
         });
       },
       setShowAdvancedEnterpriseUi: (v) => set({ showAdvancedEnterpriseUi: v }),
@@ -405,9 +421,27 @@ export const useSalesPlanWizardStore = create<SalesPlanWizardState>()(
           opportunityTiers: w.opportunityTiers.map((t) => ({ ...t })),
         });
       },
+      savePlanAsNewScenario: (name: string) => {
+        const ws = useWorkspaceStore.getState();
+        const companyId = ws.selectedCompanyId;
+        const activeId = ws.selectedScenarioId;
+        if (!companyId || !activeId) return false;
+        const newId = ws.createScenario({
+          companyId,
+          name: name.trim() || "New scenario",
+          cloneFromId: activeId,
+        });
+        if (!newId) return false;
+        return get().savePlanToScenarioId(newId);
+      },
       savePlanToSelectedOperationalUnit: () => {
+        const scenarioId = useWorkspaceStore.getState().selectedScenarioId;
+        if (!scenarioId) return false;
+        return get().savePlanToScenarioId(scenarioId);
+      },
+      savePlanToScenarioId: (scenarioId: string) => {
         const w = get();
-        if (!w.meta.portfolioName?.trim() || w.products.length === 0) return false;
+        if (w.products.length === 0) return false;
 
         const ws = useWorkspaceStore.getState();
         const company =
@@ -504,7 +538,9 @@ export const useSalesPlanWizardStore = create<SalesPlanWizardState>()(
           revenueWeight: s.revenueWeight / wsum,
         }));
 
-        return useWorkspaceStore.getState().applySalesPlanToOperationalUnit({
+        const bundle = ws.scenarioBundles[scenarioId];
+        return useWorkspaceStore.getState().applySalesPlanToScenario({
+          scenarioId,
           companyId: company.id,
           companyPatch: {
             organizationId: company.organizationId || getActiveOrganizationId() || company.organizationId,
@@ -517,7 +553,7 @@ export const useSalesPlanWizardStore = create<SalesPlanWizardState>()(
           },
           streams,
           scenarioPatch: {
-            name: w.meta.planningScenarioName?.trim() || "Saved plan",
+            name: bundle?.scenario.name ?? "Saved plan",
             npTargetPct: w.npTargetPct,
           },
         });

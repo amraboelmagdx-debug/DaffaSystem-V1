@@ -607,4 +607,16 @@ However, **today’s default runtime posture** (demo Zustand, heuristic scenario
 
 ---
 
+## Appendix E — Forward forecast foundation (2026-05-17)
+
+Executive and `/forecasts` read **`evaluateForwardForecast`** via `evaluateEconomicsGraph` (`src/lib/planning/forward-forecast/`): scenario-aware financial roll-forward (stream CM, active engine anchor), HR-backed operational utilization/hiring trajectory, workbook target attainment, and deterministic sustainability narratives. Path A `buildRollingForecastSeries` remains only for grid sandbox reset (`legacy-company-series.ts`). No AI, no `forecasts` table writes in v1.
+
+---
+
+## Appendix D — Economics orchestration (2026-05-17)
+
+Planning and commercial surfaces now read through **`evaluateEconomicsGraph`** (`src/lib/platform-economics/evaluation/`) and shared primitives (`src/lib/planning/primitives/`): stream CM wraps `contributionFromStreams`, forecast sandbox P&L uses `monthlyPnLFromCm`, commercial model compare uses `compareCommercialModels`, and deal margins align with `computeCommercialMargins`. UI routes should not call `runForecastEngine`, `pickBlendedMargin`, or `computeWorkbookTargets` directly (`npm run verify:ui-engines`). Supabase `revenue_stream_deal_tier_lines` hydrate into `scenarioBundles[].tierLineOverrides` when scenario JSON has no override. Stream CM (scenario engine) and workbook CM (tier matrix) remain separate measure IDs.
+
+---
+
 *End of PROJECT ARCHITECTURE AUDIT.*

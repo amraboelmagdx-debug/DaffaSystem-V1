@@ -19,9 +19,20 @@ import type { FormulaOwner } from "./planning-measure-types";
 import { MEASURE_ID, type MeasureId } from "./measure-ids";
 import type { KpiLineage } from "./measure-lineage";
 import {
+  buildFeasibilityEvalContext,
+  evaluateOperationalFeasibility,
+} from "@/lib/planning/operational-feasibility";
+import { evaluateScenarioBundle } from "@/lib/planning/scenario-comparison";
+import type { HrWorkforceSnapshot } from "@/types/operational-feasibility";
+import {
   assertPlanningEvaluationContext,
   resolveActiveScenario,
 } from "./planning-evaluation-readiness";
+import { blendedCmFromStreams } from "@/lib/planning/primitives";
+import { dealEconomicsRollupAsMeasureValues } from "@/lib/deal-economics/deal-measures";
+import { serviceEconomicsAsMeasureValues } from "@/lib/service-economics/service-measures";
+import type { DealEconomicsMeasures } from "@/lib/deal-economics/types";
+import type { ServiceEconomicsMeasures } from "@/lib/service-economics/types";
 
 export type MeasureLineageOwner =
   | "calculations-engine"
@@ -70,14 +81,6 @@ export type ExecutiveWorkspaceMeasuresResult = {
   measureLineageById: Partial<Record<MeasureId, KpiLineage>>;
 };
 
-function blendedCmFromStreams(streams: DemoRevenueStream[], fallback: number): number {
-  if (!streams.length) return fallback;
-  return (
-    streams.reduce((a, s) => a + s.revenueWeight * s.contributionMarginPct, 0) /
-    streams.reduce((a, s) => a + s.revenueWeight, 0)
-  );
-}
-
 function buildLineageMaps(): {
   measureLineageById: Partial<Record<MeasureId, KpiLineage>>;
   lineage: Partial<Record<MeasureId, MeasureLineage>>;
@@ -108,6 +111,8 @@ function fillValuesFromEngines(input: {
   workbook: ReturnType<typeof computeWorkbookPlanningSlice>;
   pipeline: { health: number; coverage: number };
   forecastAchievementVsPlanProxy: number;
+  serviceEconomicsMeasures?: ServiceEconomicsMeasures | null;
+  dealEconomicsRollup?: DealEconomicsMeasures | null;
 }): Partial<Record<MeasureId, number>> {
   const {
     blendedStreamCmPct,
@@ -144,14 +149,35 @@ function fillValuesFromEngines(input: {
     [MEASURE_ID.BU_REVENUE_SCENARIO_MONTHLY]: activeEngine.revenue,
     [MEASURE_ID.BU_NET_PROFIT_SCENARIO_MONTHLY]: activeEngine.netProfit,
     [MEASURE_ID.BU_ROI_SCENARIO_ON_FIXED]: activeEngine.roi,
+    ...(input.serviceEconomicsMeasures
+      ? serviceEconomicsAsMeasureValues(input.serviceEconomicsMeasures)
+      : {}),
+    ...(input.dealEconomicsRollup
+      ? dealEconomicsRollupAsMeasureValues(input.dealEconomicsRollup)
+      : {}),
   };
 }
 
+export type EvaluateExecutiveWorkspaceMeasuresOptions = {
+  hrSnapshot?: HrWorkforceSnapshot | null;
+  serviceEconomicsMeasures?: ServiceEconomicsMeasures | null;
+  dealEconomicsRollup?: DealEconomicsMeasures | null;
+};
+
 export function evaluateExecutiveWorkspaceMeasures(
-  input: PlanningContext | ExecutiveWorkspaceMeasuresInput
+  input: PlanningContext | ExecutiveWorkspaceMeasuresInput,
+  options?: EvaluateExecutiveWorkspaceMeasuresOptions
 ): ExecutiveWorkspaceMeasuresResult {
   assertPlanningEvaluationContext(input);
-  const { company, streams, opportunities, scenarios, activeScenarioId, tierLineOverrides } = input;
+  const {
+    company,
+    streams,
+    opportunities,
+    scenarios,
+    activeScenarioId,
+    tierLineOverrides,
+    scenarioBundles,
+  } = input;
 
   const weightedPipeline = opportunities
     .filter((o) => o.companyId === company.id)
@@ -171,8 +197,24 @@ export function evaluateExecutiveWorkspaceMeasures(
     { weightedPipeline }
   );
 
+  const companyStreams = streams.filter((s) => s.companyId === company.id);
+  const evalCommon = {
+    anchorCompany: company,
+    streams: companyStreams,
+    opportunities,
+  };
+
   const scenarioById: Record<string, EngineOutputs> = {};
+  if (scenarioBundles && Object.keys(scenarioBundles).length > 0) {
+    for (const sc of scenarios) {
+      const bundle = scenarioBundles[sc.id];
+      if (bundle) {
+        scenarioById[sc.id] = evaluateScenarioBundle({ ...evalCommon, bundle }).engine;
+      }
+    }
+  }
   for (const sc of scenarios) {
+    if (scenarioById[sc.id]) continue;
     scenarioById[sc.id] = applyScenario(
       {
         fixedCostsMonthly: company.fixedCostsMonthly,
@@ -206,13 +248,20 @@ export function evaluateExecutiveWorkspaceMeasures(
     );
   }
 
-  const npTargetForWorkbook = activeScenario.npTargetPct;
-  const workbook = computeWorkbookPlanningSlice({
-    streams,
-    tierLineOverrides,
-    fixedCostsMonthly: company.fixedCostsMonthly,
-    npTargetPct: npTargetForWorkbook,
-  });
+  const activeBundle = scenarioBundles?.[activeScenario.id];
+  let workbook: ReturnType<typeof computeWorkbookPlanningSlice>;
+  if (activeBundle && scenarioBundles) {
+    const activeEval = evaluateScenarioBundle({ ...evalCommon, bundle: activeBundle });
+    workbook = activeEval.workbook;
+  } else {
+    const npTargetForWorkbook = activeScenario.npTargetPct;
+    workbook = computeWorkbookPlanningSlice({
+      streams: companyStreams,
+      tierLineOverrides,
+      fixedCostsMonthly: company.fixedCostsMonthly,
+      npTargetPct: npTargetForWorkbook,
+    });
+  }
 
   const rows = opportunities
     .filter((o) => o.companyId === company.id)
@@ -252,7 +301,34 @@ export function evaluateExecutiveWorkspaceMeasures(
     workbook,
     pipeline: { health, coverage },
     forecastAchievementVsPlanProxy,
+    serviceEconomicsMeasures: options?.serviceEconomicsMeasures,
+    dealEconomicsRollup: options?.dealEconomicsRollup,
   });
+
+  if (options?.hrSnapshot && activeBundle) {
+    const baselineBundle = scenarios.find((s) => s.baseline)
+      ? scenarioBundles?.[scenarios.find((s) => s.baseline)!.id]
+      : undefined;
+    const feasCtx = buildFeasibilityEvalContext({
+      anchorCompany: company,
+      streams: companyStreams,
+      opportunities,
+      bundle: activeBundle,
+      baselineBundle,
+      hrSnapshot: options.hrSnapshot,
+    });
+    const feas = evaluateOperationalFeasibility(feasCtx);
+    if (feas.feasibilityMode === "hr_backed" && feas.supply && feas.demand) {
+      valuesByMeasureId[MEASURE_ID.OPERATIONAL_SUPPLY_HOURS] =
+        feas.supply.totalBillableHoursMonth;
+      valuesByMeasureId[MEASURE_ID.OPERATIONAL_DEMAND_HOURS] =
+        feas.demand.totalDemandHoursMonth;
+      valuesByMeasureId[MEASURE_ID.OPERATIONAL_UTILIZATION_PCT] =
+        feas.saturation?.buUtilizationPct ?? 0;
+      valuesByMeasureId[MEASURE_ID.OPERATIONAL_HIRING_FTE_GAP] =
+        feas.staffing?.impliedFteGap ?? 0;
+    }
+  }
 
   return {
     blendedStreamCmPct,

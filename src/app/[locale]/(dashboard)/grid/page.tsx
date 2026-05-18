@@ -9,6 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { PlanningWorkbookPanel } from "@/components/planning/planning-workbook-panel";
 import { OperationalPlanningPageShell } from "@/components/platform-simplification/operational-planning-page-shell";
 import { buildDemoForecastSeries } from "@/data/demo-seed";
+import {
+  forecastGridRowsFromSeries,
+  monthlyPnLFromRevenueEdit,
+} from "@/lib/planning/primitives";
 import { useWorkspaceStore } from "@/stores/use-workspace-store";
 
 type MetricKey = "revenue" | "grossProfit" | "netProfit";
@@ -21,14 +25,7 @@ export default function ForecastGridPage() {
     () => (company ? buildDemoForecastSeries(company) : []),
     [company]
   );
-  const [grid, setGrid] = useState(() =>
-    base.map((r) => ({
-      month: r.month,
-      revenue: r.revenue,
-      grossProfit: r.grossProfit,
-      netProfit: r.netProfit,
-    }))
-  );
+  const [grid, setGrid] = useState(() => forecastGridRowsFromSeries(base));
   const [dbStatus, setDbStatus] = useState<"unknown" | "ok" | "none">("unknown");
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -59,9 +56,14 @@ export default function ForecastGridPage() {
       const next = [...prev];
       const copy = { ...next[row], [key]: value };
       if (key === "revenue") {
-        const cm = company.contributionMarginPct;
-        copy.grossProfit = value * cm;
-        copy.netProfit = copy.grossProfit - company.fixedCostsMonthly;
+        const derived = monthlyPnLFromRevenueEdit(value, {
+          fixedCostsMonthly: company.fixedCostsMonthly,
+          contributionMarginPct: company.contributionMarginPct,
+          targetNpPct: company.npTargetPct,
+          revenueMonthly: value,
+        });
+        copy.grossProfit = derived.grossProfit;
+        copy.netProfit = derived.netProfit;
       }
       next[row] = copy;
       return next;

@@ -1,11 +1,17 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { ExecutiveDashboardContent } from "@/components/dashboard/executive-dashboard-content";
 import { OperationalWorkspaceGate } from "@/components/operational-workspace/operational-workspace-gate";
 import { SampleDataPanel } from "@/components/sample-data/sample-data-panel";
 import { useOperationalWorkspace } from "@/hooks/use-operational-workspace";
+import { useForwardForecast } from "@/hooks/use-forward-forecast";
 import { usePlanningEvaluation } from "@/hooks/use-planning-evaluation";
+import { useAssumptionAttribution } from "@/hooks/use-assumption-attribution";
+import { useOperationalFeasibility } from "@/hooks/use-operational-feasibility";
+import { useScenarioComparison } from "@/hooks/use-scenario-comparison";
+import { useActivePlanningInputs } from "@/hooks/use-active-planning-inputs";
 import {
   scenariosForCompany,
   streamsForCompany,
@@ -18,11 +24,39 @@ export default function ExecutiveDashboardPage() {
   const selectedScenarioId = useWorkspaceStore((s) => s.selectedScenarioId);
   const setScenario = useWorkspaceStore((s) => s.setScenario);
   const opportunities = useWorkspaceStore((s) => s.opportunities);
-  const tierLineOverrides = useWorkspaceStore((s) => s.tierLineOverrides);
+  const scenarioBundles = useWorkspaceStore((s) => s.scenarioBundles);
+  const companies = useWorkspaceStore((s) => s.companies);
+  const anchorCompany = selectedUnit;
+  const { company, tierLineOverrides } = useActivePlanningInputs(anchorCompany?.id);
+  const scenarios = anchorCompany ? scenariosForCompany(anchorCompany.id) : [];
+  const streams = anchorCompany ? streamsForCompany(anchorCompany.id) : [];
 
-  const company = selectedUnit;
-  const scenarios = company ? scenariosForCompany(company.id) : [];
-  const streams = company ? streamsForCompany(company.id) : [];
+  const baselineId = useMemo(
+    () => scenarios.find((s) => s.baseline)?.id ?? scenarios[0]?.id ?? "",
+    [scenarios]
+  );
+
+  const [compareMode, setCompareMode] = useState(false);
+  const [baseScenarioId, setBaseScenarioId] = useState(baselineId);
+  const [compareScenarioId, setCompareScenarioId] = useState(selectedScenarioId);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const baseParam = params.get("base");
+    const compareParam = params.get("compare");
+    if (baseParam && compareParam && scenarios.some((s) => s.id === baseParam)) {
+      setCompareMode(true);
+      setBaseScenarioId(baseParam);
+      setCompareScenarioId(compareParam);
+    }
+  }, [scenarios]);
+
+  useEffect(() => {
+    if (!compareMode) return;
+    if (!baseScenarioId && baselineId) setBaseScenarioId(baselineId);
+    if (!compareScenarioId && selectedScenarioId) setCompareScenarioId(selectedScenarioId);
+  }, [compareMode, baselineId, selectedScenarioId, baseScenarioId, compareScenarioId]);
 
   const evaluation = usePlanningEvaluation({
     company,
@@ -31,6 +65,51 @@ export default function ExecutiveDashboardPage() {
     scenarios,
     selectedScenarioId,
     tierLineOverrides,
+    scenarioBundles,
+  });
+
+  const forwardForecastPhase = useForwardForecast({
+    company,
+    streams,
+    opportunities,
+    scenarios,
+    selectedScenarioId,
+    tierLineOverrides,
+    scenarioBundles,
+  });
+
+  const comparison = useScenarioComparison({
+    anchorCompany: company ?? companies.find((c) => c.id === anchorCompany?.id),
+    streams,
+    opportunities,
+    scenarioBundles,
+    baseScenarioId: baseScenarioId || baselineId,
+    compareScenarioId: compareScenarioId || selectedScenarioId,
+    enabled: compareMode,
+  });
+
+  const attribution = useAssumptionAttribution({
+    comparison: comparison.phase === "ready" ? comparison.result : undefined,
+    anchorCompany: company ?? companies.find((c) => c.id === anchorCompany?.id),
+    streams,
+    opportunities,
+    scenarioBundles,
+    baseScenarioId: baseScenarioId || baselineId,
+    compareScenarioId: compareScenarioId || selectedScenarioId,
+    enabled: compareMode,
+  });
+
+  const operationalFeasibility = useOperationalFeasibility({
+    anchorCompany: company ?? companies.find((c) => c.id === anchorCompany?.id),
+    streams,
+    opportunities,
+    scenarioBundles,
+    activeScenarioId: selectedScenarioId,
+    baseScenarioId: baseScenarioId || baselineId,
+    compareScenarioId: compareScenarioId || selectedScenarioId,
+    comparison: comparison.phase === "ready" ? comparison.result : undefined,
+    compareMode,
+    enabled: true,
   });
 
   if (!isReady) {
@@ -74,6 +153,20 @@ export default function ExecutiveDashboardPage() {
         measures={evaluation.measures}
         onSelectCompany={setCompany}
         onSelectScenario={setScenario}
+        compareMode={compareMode}
+        onCompareModeChange={setCompareMode}
+        baseScenarioId={baseScenarioId || baselineId}
+        compareScenarioId={compareScenarioId || selectedScenarioId}
+        onBaseScenarioChange={setBaseScenarioId}
+        onCompareScenarioChange={setCompareScenarioId}
+        comparison={comparison}
+        attribution={attribution}
+        operationalFeasibility={operationalFeasibility}
+        forwardForecast={
+          forwardForecastPhase.phase === "ready"
+            ? forwardForecastPhase.forwardForecast
+            : null
+        }
       />
     </OperationalWorkspaceGate>
   );
