@@ -24,6 +24,18 @@ export interface ServiceTier extends ServiceEntityMeta {
 }
 
 /** Templates are scoped to exactly one business unit and one family. */
+/** Opportunity size bands (Tiny/Standard/Big/Mega) for planning — not delivery ServiceTier. */
+export type ServiceOpportunityTierKey = "tiny" | "standard" | "big" | "mega";
+
+export type ServiceOpportunityTierBand = {
+  tierKey: ServiceOpportunityTierKey;
+  active: boolean;
+  minValueSar?: number;
+  maxValueSar?: number | null;
+  minSellingPriceSar?: number;
+  avgDealValueSar?: number;
+};
+
 export interface ServiceTemplate extends ServiceEntityMeta {
   id: string;
   serviceFamilyId: string;
@@ -31,6 +43,7 @@ export interface ServiceTemplate extends ServiceEntityMeta {
   name: string;
   code: string;
   description?: string;
+  opportunityTierBands?: ServiceOpportunityTierBand[];
 }
 
 /** Join entity linking allowed tiers for a template. */

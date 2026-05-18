@@ -15,6 +15,12 @@ const SalesPlanWizard = dynamic(
   }
 );
 
+import { BuContextGate } from "@/components/operational-workspace/bu-context-gate";
+
 export default function SalesPlanPage() {
-  return <SalesPlanWizard />;
+  return (
+    <BuContextGate>
+      <SalesPlanWizard />
+    </BuContextGate>
+  );
 }

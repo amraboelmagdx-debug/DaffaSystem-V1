@@ -209,6 +209,8 @@ export function applyPlanningClientModelToWorkspaceState(
   model: PlanningWorkspaceClientModel,
   options?: {
     scenarioBundles?: Record<string, import("@/types/planning-scenario").ScenarioPlanningBundle>;
+    /** When set, keep this company/scenario if still valid after hydrate (no auto-first-BU). */
+    preserveSelectedCompanyId?: string;
   }
 ): {
   companies: DemoCompany[];
@@ -230,9 +232,13 @@ export function applyPlanningClientModelToWorkspaceState(
   const opportunities = model.opportunities
     .filter((o) => companies.some((c) => c.id === o.companyId))
     .map((o) => ({ ...o }));
-  const selectedCompanyId = linked[0]?.id ?? companies[0]?.id ?? "";
-  const scenariosForCo = scenarios.filter((s) => s.companyId === selectedCompanyId);
-  const selectedScenarioId = scenariosForCo[0]?.id ?? scenarios[0]?.id ?? "";
+  const preserveId = options?.preserveSelectedCompanyId?.trim() ?? "";
+  const preservedLinked = preserveId ? linked.find((c) => c.id === preserveId) : undefined;
+  const selectedCompanyId = preservedLinked?.id ?? "";
+  const scenariosForCo = selectedCompanyId
+    ? scenarios.filter((s) => s.companyId === selectedCompanyId)
+    : [];
+  const selectedScenarioId = scenariosForCo[0]?.id ?? "";
   const scenarioBundles =
     options?.scenarioBundles ??
     rebuildBundlesFromHydrated({ companies, scenarios });

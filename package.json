@@ -7,7 +7,8 @@
     "dev:turbo": "next dev --turbopack -p 3001",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint src --quiet",
+    "lint:strict": "eslint src --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "verify:ui-engines": "node scripts/check-ui-engine-imports.mjs",
@@ -23,7 +24,8 @@
     "verify:hr-e2e": "node scripts/verify-hr-catalog-e2e.mjs http://localhost:3001",
     "verify:operational-graph": "node scripts/verify-operational-graph-sync.mjs http://localhost:3001",
     "verify:hr-browser": "node scripts/verify-hr-browser-hydration.mjs http://localhost:3001",
-    "inspect:hr-recovery": "node scripts/inspect-hr-recovery.mjs"
+    "inspect:hr-recovery": "node scripts/inspect-hr-recovery.mjs",
+    "verify:pilot-migrations": "node scripts/verify-pilot-migrations.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

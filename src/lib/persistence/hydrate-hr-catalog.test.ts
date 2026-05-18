@@ -158,6 +158,37 @@ describe("hydrate-hr-catalog", () => {
     expect(isHrCatalogPendingServerUplift(ORG)).toBe(true);
   });
 
+  it("keeps local when local has more business units than server", async () => {
+    const { fetchHrCatalog } = await import("@/lib/persistence/fetch-hr-catalog");
+    const { useHrWorkforceStore, mergeHrPersistedCatalogIntoState } = await import(
+      "@/stores/use-hr-workforce-store"
+    );
+    const { touchHrCatalogLocalMeta } = await import("@/lib/persistence/hr-catalog-local-meta");
+
+    vi.mocked(useHrWorkforceStore.getState).mockReturnValue({
+      businessUnits: [{ id: "bu_a" }, { id: "bu_b" }],
+      roles: [],
+    } as ReturnType<typeof useHrWorkforceStore.getState>);
+
+    touchHrCatalogLocalMeta(ORG, "2026-01-01T00:00:00.000Z");
+
+    vi.mocked(fetchHrCatalog).mockResolvedValue({
+      kind: "ok",
+      catalog: { businessUnits: [{ id: "bu_a" }] },
+      meta: {
+        organizationId: ORG,
+        engineVersion: null,
+        updatedAt: "2026-12-01T00:00:00.000Z",
+      },
+    });
+
+    const { hydrateHrCatalogFromServer } = await import("./hydrate-hr-catalog");
+    const result = await hydrateHrCatalogFromServer(ORG);
+
+    expect(result.source).toBe("local");
+    expect(mergeHrPersistedCatalogIntoState).not.toHaveBeenCalled();
+  });
+
   it("falls back to local on fetch error", async () => {
     const { fetchHrCatalog } = await import("@/lib/persistence/fetch-hr-catalog");
     const { useHrWorkforceStore } = await import("@/stores/use-hr-workforce-store");

@@ -613,6 +613,20 @@ Executive and `/forecasts` read **`evaluateForwardForecast`** via `evaluateEcono
 
 ---
 
+## Appendix G — Sales incentive economics (2026-05-17)
+
+BU-scoped **IncentivePlan** + deterministic **`evaluateIncentiveRun`** (`src/lib/incentives/`) produce immutable **IncentiveSnapshot** outputs with explain lines. Types: [`src/types/incentives.ts`](src/types/incentives.ts); CRM fact contract: [`src/types/incentive-facts.ts`](src/types/incentive-facts.ts). UI: `/sales-incentives`. Opportunity tiers for rules use Sales Plan SAR bands via [`opportunity-tier-display.ts`](src/lib/planning/opportunity-tier-display.ts) — not legacy workbook demo bands. Scorecard attainment bridges [`buildSalesPlanModel`](src/lib/sales-plan/build-model.ts). Full design: [`docs/INCENTIVE_ECONOMICS_ARCHITECTURE.md`](docs/INCENTIVE_ECONOMICS_ARCHITECTURE.md).
+
+---
+
+## Appendix F — Canonical surfaces & redirects (2026-05-17)
+
+**Primary nav:** Executive (`/`), Sales Plan, Service Architecture, Calculator (`/service-architecture/commercial-pricing`), HR Workforce, Settings. **Advanced:** Forecast matrix (`/grid`), Scenario library (`/scenarios`), Pipeline demo, AI assistant.
+
+**Redirects (Next.js + client):** `/companies` → Sales Plan; `/calculator` → commercial-pricing; `/forecasts` → Executive `/#rolling-forecast`. Executive uses a single `useEconomicsGraph` call (one `evaluateEconomicsGraph` per render). Grid matrix remains sandbox/demo roll-forward; tier workbook editor on Grid with link from Executive workbook KPIs.
+
+---
+
 ## Appendix D — Economics orchestration (2026-05-17)
 
 Planning and commercial surfaces now read through **`evaluateEconomicsGraph`** (`src/lib/platform-economics/evaluation/`) and shared primitives (`src/lib/planning/primitives/`): stream CM wraps `contributionFromStreams`, forecast sandbox P&L uses `monthlyPnLFromCm`, commercial model compare uses `compareCommercialModels`, and deal margins align with `computeCommercialMargins`. UI routes should not call `runForecastEngine`, `pickBlendedMargin`, or `computeWorkbookTargets` directly (`npm run verify:ui-engines`). Supabase `revenue_stream_deal_tier_lines` hydrate into `scenarioBundles[].tierLineOverrides` when scenario JSON has no override. Stream CM (scenario engine) and workbook CM (tier matrix) remain separate measure IDs.

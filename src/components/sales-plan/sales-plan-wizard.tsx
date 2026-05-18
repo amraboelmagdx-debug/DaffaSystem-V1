@@ -48,6 +48,14 @@ import {
 } from "@/stores/use-workspace-store";
 import { useSalesPlanWizardStore } from "@/stores/use-sales-plan-wizard-store";
 import type { OpportunityTierKey } from "@/types/sales-plan";
+import {
+  SALES_PLAN_CHAPTERS,
+  chapterForStep,
+  firstStepOfChapter,
+} from "@/lib/sales-plan/wizard-chapters";
+import { SampleDataPanel } from "@/components/sample-data/sample-data-panel";
+import { OperatorPageShell } from "@/components/ox/operator-page-shell";
+import { OxSection } from "@/components/ox/ox-section";
 
 const TIER_KEYS: OpportunityTierKey[] = ["tiny", "standard", "big", "mega"];
 
@@ -79,6 +87,7 @@ type SegmentRevenueRow = SalesPlanModel["segmentRevenue"][number];
 
 export function SalesPlanWizard() {
   const t = useTranslations("salesPlan");
+  const tOx = useTranslations("ox");
   const locale = useLocale();
   const fmt = (n: number, currency?: string) =>
     formatCurrencyLocale(n, locale, currency ?? "SAR");
@@ -224,31 +233,23 @@ export function SalesPlanWizard() {
     );
   }
 
+  const activeChapter = chapterForStep(wizard.currentStep);
+
   return (
-    <OperationalWorkspaceGate>
+    <OperatorPageShell
+      routeContext="sales-plan"
+      title={t("title")}
+      purpose={tOx("salesPlan.purpose")}
+      mode="author"
+      showWorkflowRail
+      headerActions={
+        <Badge variant="outline" className="font-normal">
+          {t("badge")}
+        </Badge>
+      }
+    >
     <div className="mx-auto max-w-6xl space-y-6 pb-28">
-      <section
-        className={cn(
-          "relative overflow-hidden rounded-2xl border border-border/60",
-          "bg-gradient-to-br from-violet-500/[0.07] via-card/95 to-fuchsia-500/[0.05]",
-          "p-6 shadow-sm sm:p-8"
-        )}
-      >
-        <header className="space-y-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="outline" className="font-normal">
-                {t("badge")}
-              </Badge>
-              <Sparkles className="h-4 w-4 shrink-0 text-amber-500" aria-hidden />
-            </div>
-            <h1 className="text-balance text-3xl font-semibold tracking-tight text-foreground sm:text-4xl md:leading-[1.15]">
-              {t("title")}
-            </h1>
-            <p className="text-pretty max-w-[62ch] text-[15px] leading-relaxed text-muted-foreground sm:text-base">
-              {t("subtitle")}
-            </p>
-        </header>
-      </section>
+      <SampleDataPanel moduleId="sales-plan-wizard" />
 
       <PlanningSessionHeader
         companyId={company.id}
@@ -298,6 +299,24 @@ export function SalesPlanWizard() {
         <Button type="button" variant="outline" size="sm" onClick={() => wizard.resetWizard()}>
           {t("reset")}
         </Button>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {SALES_PLAN_CHAPTERS.map((ch) => (
+          <button
+            key={ch.id}
+            type="button"
+            onClick={() => wizard.setStep(firstStepOfChapter(ch.id))}
+            className={cn(
+              "rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
+              activeChapter.id === ch.id
+                ? "border-primary bg-primary/10 text-foreground"
+                : "border-border/60 text-muted-foreground hover:bg-muted/50"
+            )}
+          >
+            {tOx(ch.labelKey as never)}
+          </button>
+        ))}
       </div>
 
       <div className="flex flex-wrap gap-1.5 border-b border-border/60 pb-3">
@@ -1500,6 +1519,6 @@ export function SalesPlanWizard() {
         </div>
       </div>
     </div>
-    </OperationalWorkspaceGate>
+    </OperatorPageShell>
   );
 }

@@ -1,12 +1,12 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { OperationalWorkspaceGate } from "@/components/operational-workspace/operational-workspace-gate";
+import { useTranslations } from "next-intl";
+import { OperatorPageShell } from "@/components/ox/operator-page-shell";
+import type { OperatorMode } from "@/lib/ox/operator-mode";
 import {
-  TransitionalArchitectureBanner,
   type TransitionalBannerVariant,
 } from "@/components/platform-simplification/transitional-architecture-banner";
-import { useWave0DevWarnings } from "@/hooks/use-wave0-dev-warnings";
 
 type Props = {
   routeContext: string;
@@ -18,7 +18,25 @@ type Props = {
   children: ReactNode;
 };
 
-/** Wave 0: hydration gate + visibility banner + dev console warnings (no routing or data changes). */
+function modeForBanner(variant: TransitionalBannerVariant): OperatorMode {
+  if (variant === "deprecated") return "diagnose";
+  if (variant === "derived") return "diagnose";
+  return "monitor";
+}
+
+const ROUTE_TITLES: Record<string, string> = {
+  grid: "Forecast matrix",
+  pipeline: "Pipeline",
+  scenarios: "Scenario library",
+};
+
+const BODY_KEYS: Record<TransitionalBannerVariant, string> = {
+  transitional: "bodyTransitional",
+  derived: "bodyDerived",
+  deprecated: "bodyDeprecated",
+};
+
+/** Wave 0 + OX: hydration gate + operator shell + dev warnings. */
 export function OperationalPlanningPageShell({
   routeContext,
   bannerVariant,
@@ -28,19 +46,22 @@ export function OperationalPlanningPageShell({
   loadingLabel,
   children,
 }: Props) {
-  useWave0DevWarnings(routeContext);
+  const tArch = useTranslations("architectureCleanup");
 
   return (
-    <OperationalWorkspaceGate loadingLabel={loadingLabel}>
-      <div className="space-y-6">
-        <TransitionalArchitectureBanner
-          variant={bannerVariant}
-          readOnly={readOnly}
-          usesDemoData={usesDemoData}
-          usesSampleData={usesSampleData}
-        />
-        {children}
-      </div>
-    </OperationalWorkspaceGate>
+    <OperatorPageShell
+      routeContext={routeContext}
+      title={ROUTE_TITLES[routeContext] ?? routeContext}
+      purpose={tArch(BODY_KEYS[bannerVariant] as never)}
+      mode={modeForBanner(bannerVariant)}
+      bannerVariant={bannerVariant}
+      readOnly={readOnly ?? bannerVariant !== "transitional"}
+      usesDemoData={usesDemoData}
+      usesSampleData={usesSampleData}
+      loadingLabel={loadingLabel}
+      showWorkflowRail={false}
+    >
+      {children}
+    </OperatorPageShell>
   );
 }

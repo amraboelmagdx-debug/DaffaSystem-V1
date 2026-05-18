@@ -1,5 +1,6 @@
 import { create } from "zustand";
-import { createJSONStorage, persist } from "zustand/middleware";
+import { persist } from "zustand/middleware";
+import { createBrowserJSONStorage } from "@/lib/persistence/browser-storage";
 import type { CommercialMarginThresholds, PricingModelSpec } from "@/lib/commercial-pricing-intelligence/types";
 import { DEFAULT_COMMERCIAL_MARGIN_THRESHOLDS, DEFAULT_PRICING_MODEL_SPEC } from "@/lib/commercial-pricing-intelligence/defaults";
 
@@ -34,7 +35,7 @@ export const useCommercialPricingPrefsStore = create<CommercialPricingPrefsState
     }),
     {
       name: "efp-commercial-pricing-prefs-v1",
-      storage: createJSONStorage(() => localStorage),
+      storage: createBrowserJSONStorage(),
       partialize: (s) => ({
         model: s.model,
         activeRiskIds: s.activeRiskIds,

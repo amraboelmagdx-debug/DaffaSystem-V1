@@ -18,7 +18,7 @@ import type {
 import type { CompareScenariosInput, ScenarioComparisonResult } from "@/types/scenario-comparison";
 import type { DemoCompany, DemoOpportunity, DemoRevenueStream } from "@/types/domain";
 import type { ScenarioPlanningBundle } from "@/types/planning-scenario";
-import { useHrWorkforceStore } from "@/stores/use-hr-workforce-store";
+import { useHrWorkforceSnapshotSlice } from "@/hooks/use-hr-workforce-snapshot-slice";
 import { useServiceArchitectureStore } from "@/stores/use-service-architecture-store";
 
 export type UseOperationalFeasibilityInput = {
@@ -44,14 +44,7 @@ export function useOperationalFeasibility(
   input: UseOperationalFeasibilityInput
 ): OperationalFeasibilityPhase {
   const labels = useFeasibilityNarrativeLabels();
-  const hrSlice = useHrWorkforceStore((s) => ({
-    roles: s.roles,
-    businessUnits: s.businessUnits,
-    departments: s.departments,
-    teams: s.teams,
-    hrGlobalSettings: s.hrGlobalSettings,
-    ohManualByBusinessUnitId: s.ohManualByBusinessUnitId,
-  }));
+  const hrSlice = useHrWorkforceSnapshotSlice();
   const serviceRoleAllocations = useServiceArchitectureStore((s) => s.serviceRoleAllocations);
 
   const {

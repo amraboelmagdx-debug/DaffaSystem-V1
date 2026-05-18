@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { createBrowserJSONStorage } from "@/lib/persistence/browser-storage";
 import {
   DEFAULT_OPPORTUNITY_TIERS,
   mergeOpportunityTiersWithDefaults,
@@ -413,7 +414,7 @@ export const useSalesPlanWizardStore = create<SalesPlanWizardState>()(
         const w = get();
         const fixed = sumMonthlyFixedCosts(w.fixedCostLines);
         const { companies, selectedCompanyId, updateCompany } = useWorkspaceStore.getState();
-        const company = companies.find((c) => c.id === selectedCompanyId) ?? companies[0];
+        const company = companies.find((c) => c.id === selectedCompanyId);
         if (!company) return;
         updateCompany(company.id, {
           fixedCostsMonthly: fixed,
@@ -562,6 +563,7 @@ export const useSalesPlanWizardStore = create<SalesPlanWizardState>()(
     }),
     {
       name: "efp-sales-plan-wizard",
+      storage: createBrowserJSONStorage(),
       version: 2,
       migrate: (persisted) => {
         const p = (persisted ?? {}) as Record<string, unknown>;

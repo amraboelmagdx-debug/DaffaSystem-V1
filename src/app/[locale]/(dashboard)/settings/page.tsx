@@ -5,6 +5,9 @@ import { dealSizeTiers } from "@/data/demo-seed";
 import { formatCurrency, formatPct } from "@/lib/calculations/engine";
 import { Badge } from "@/components/ui/badge";
 import { PlatformSampleDataControls } from "@/components/sample-data/platform-sample-data-controls";
+import { QaDebugPanelSettings } from "@/components/dev/qa-debug-panel-settings";
+import { PersistenceDataHealthCard } from "@/components/settings/persistence-data-health-card";
+import { isSampleDataUxEnabled } from "@/lib/ox/sample-data-access";
 
 export default function SettingsPage() {
   return (
@@ -17,7 +20,9 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <PlatformSampleDataControls />
+      <PersistenceDataHealthCard />
+      {isSampleDataUxEnabled() ? <PlatformSampleDataControls /> : null}
+      <QaDebugPanelSettings />
 
       <Card className="border-border/60 bg-card/60 backdrop-blur">
         <CardHeader>

@@ -18,9 +18,10 @@ import {
 
 export default function ScenariosPage() {
   const tg = useTranslations("planning.governance");
+  const ta = useTranslations("architectureCleanup");
   const { companies, selectedCompanyId, opportunities, selectedScenarioId, scenarioBundles } =
     useWorkspaceStore();
-  const anchor = companies.find((c) => c.id === selectedCompanyId) ?? companies[0];
+  const anchor = companies.find((c) => c.id === selectedCompanyId);
   const { company, tierLineOverrides } = useActivePlanningInputs(anchor?.id);
   const scenarios = anchor ? scenariosForCompany(anchor.id) : [];
   const streams = anchor ? streamsForCompany(anchor.id) : [];
@@ -61,6 +62,9 @@ export default function ScenariosPage() {
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">{tg("compareTitle")}</h1>
           <p className="mt-2 max-w-3xl text-sm text-muted-foreground">{tg("compareSubtitle")}</p>
+          <p className="mt-2 max-w-3xl text-xs text-muted-foreground">
+            {ta("scenarioLibraryHint")}
+          </p>
           <div className="mt-3 flex items-center gap-2">
             <input
               id="hide-archived"

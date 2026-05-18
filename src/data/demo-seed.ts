@@ -5,6 +5,9 @@ import type {
   DemoRevenueStream,
   DemoScenario,
 } from "@/types/domain";
+import { DEFAULT_OPPORTUNITY_TIERS } from "@/data/opportunity-tiers-defaults";
+import { resolveOpportunityTierKey } from "@/lib/planning/opportunity-tier-display";
+import { workbookDisplayTiersFromDefinitions } from "@/lib/planning/opportunity-tier-display";
 
 export const DEMO_ORG_ID = "org-demo-001";
 
@@ -145,8 +148,31 @@ export const demoScenarios: DemoScenario[] = [
   },
 ];
 
+function opp(
+  base: DemoOpportunity,
+  extras?: Partial<DemoOpportunity>
+): DemoOpportunity {
+  const dealValue = base.dealValue;
+  const tierKey =
+    base.tierKey ??
+    extras?.tierKey ??
+    resolveOpportunityTierKey(dealValue, DEFAULT_OPPORTUNITY_TIERS);
+  return {
+    ...base,
+    tierKey,
+    referral: extras?.referral ?? base.referral ?? false,
+    clientType: extras?.clientType ?? base.clientType ?? "existing_client",
+    complexity: extras?.complexity ?? base.complexity ?? "normal",
+    marginSar:
+      extras?.marginSar ??
+      base.marginSar ??
+      Math.round(dealValue * 0.35),
+    ...extras,
+  };
+}
+
 export const demoOpportunities: DemoOpportunity[] = [
-  {
+  opp({
     id: "op-1",
     companyId: "co-northwind",
     clientName: "Contoso",
@@ -157,20 +183,23 @@ export const demoOpportunities: DemoOpportunity[] = [
     revenueStreamId: "rs-ret",
     marketSegment: "Enterprise",
     riskScore: 2,
-  },
-  {
-    id: "op-2",
-    companyId: "co-northwind",
-    clientName: "Fabrikam",
-    name: "Analytics platform",
-    stage: "proposal",
-    probabilityPct: 0.35,
-    dealValue: 640_000,
-    revenueStreamId: "rs-lic",
-    marketSegment: "Mid-market",
-    riskScore: 3,
-  },
-  {
+  }),
+  opp(
+    {
+      id: "op-2",
+      companyId: "co-northwind",
+      clientName: "Fabrikam",
+      name: "Analytics platform",
+      stage: "proposal",
+      probabilityPct: 0.35,
+      dealValue: 640_000,
+      revenueStreamId: "rs-lic",
+      marketSegment: "Mid-market",
+      riskScore: 3,
+    },
+    { referral: true, clientType: "new_client" }
+  ),
+  opp({
     id: "op-3",
     companyId: "co-northwind",
     clientName: "Litware",
@@ -181,8 +210,8 @@ export const demoOpportunities: DemoOpportunity[] = [
     revenueStreamId: "rs-svc",
     marketSegment: "Enterprise",
     riskScore: 2,
-  },
-  {
+  }),
+  opp({
     id: "op-4",
     companyId: "co-northwind",
     clientName: "AdventureWorks",
@@ -193,14 +222,10 @@ export const demoOpportunities: DemoOpportunity[] = [
     revenueStreamId: "rs-evt",
     marketSegment: "Mid-market",
     riskScore: 1,
-  },
+  }),
 ];
 
 export { buildDemoForecastSeries } from "@/lib/planning/forecast/rolling-forecast-series";
 
-export const dealSizeTiers = [
-  { key: "tiny", label: "Tiny", min: 0, max: 25_000, avg: 12_000, margin: 0.28, prob: 0.35 },
-  { key: "standard", label: "Standard", min: 25_000, max: 100_000, avg: 60_000, margin: 0.35, prob: 0.28 },
-  { key: "big", label: "Big", min: 100_000, max: 500_000, avg: 220_000, margin: 0.4, prob: 0.2 },
-  { key: "mega", label: "Mega", min: 500_000, max: null, avg: 900_000, margin: 0.45, prob: 0.12 },
-];
+/** Settings display tiers — aligned to canonical Sales Plan SAR bands (not legacy 25k workbook demo). */
+export const dealSizeTiers = workbookDisplayTiersFromDefinitions(DEFAULT_OPPORTUNITY_TIERS);

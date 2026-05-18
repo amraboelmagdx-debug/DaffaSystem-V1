@@ -214,8 +214,16 @@ export async function hydrateHrCatalogFromServer(
   const serverUpdatedAt = fetchResult.meta.updatedAt;
 
   const pendingUplift = isHrCatalogPendingServerUplift(organizationId);
+  const serverCatalog = fetchResult.catalog as Record<string, unknown>;
+  const serverBuCount = Array.isArray(serverCatalog.businessUnits)
+    ? serverCatalog.businessUnits.length
+    : 0;
+  const localBuCount = localState.businessUnits.length;
+  const localAheadOfServer = localBuCount > serverBuCount;
   const serverWins =
-    serverMs >= localSavedAtMs || (localSavedAtMs > serverMs && !pendingUplift);
+    !pendingUplift &&
+    !localAheadOfServer &&
+    (serverMs >= localSavedAtMs || (localSavedAtMs > serverMs && !pendingUplift));
 
   hrHydrationDebugLog("server precedence decision", {
     organizationId,

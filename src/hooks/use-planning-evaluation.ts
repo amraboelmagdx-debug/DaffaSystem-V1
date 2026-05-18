@@ -55,7 +55,10 @@ export function usePlanningEvaluation(input: UsePlanningEvaluationInput): Planni
       return { phase: "blocked", reason: resolution.reason };
     }
 
-    const measures = evaluateEconomicsGraph(resolution.context).measures;
+    const measures = evaluateEconomicsGraph({
+      ...resolution.context,
+      options: { includeForwardForecast: false },
+    }).measures;
     return {
       phase: "ready",
       measures,

@@ -74,7 +74,11 @@ export async function refreshPlanningWorkspaceFromServer(): Promise<boolean> {
     priorBundles,
     model.streams.map((s) => s.id)
   );
-  const next = applyPlanningClientModelToWorkspaceState(model, { scenarioBundles });
+  const priorSelectedId = useWorkspaceStore.getState().selectedCompanyId;
+  const next = applyPlanningClientModelToWorkspaceState(model, {
+    scenarioBundles,
+    preserveSelectedCompanyId: priorSelectedId,
+  });
   useWorkspaceStore.setState({
     companies: next.companies,
     streams: next.streams,

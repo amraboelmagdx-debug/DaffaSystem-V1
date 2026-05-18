@@ -9,7 +9,7 @@ import {
   type PlanningEvaluationBlockReason,
 } from "@/lib/planning/measures";
 import type { ForwardForecastResult } from "@/types/forward-forecast";
-import { useHrWorkforceStore } from "@/stores/use-hr-workforce-store";
+import { useHrWorkforceSnapshotSlice } from "@/hooks/use-hr-workforce-snapshot-slice";
 
 export type ForwardForecastPhase =
   | { phase: "blocked"; reason: PlanningEvaluationBlockReason }
@@ -18,14 +18,7 @@ export type ForwardForecastPhase =
 export function useForwardForecast(
   input: UsePlanningEvaluationInput
 ): ForwardForecastPhase {
-  const hrSlice = useHrWorkforceStore((s) => ({
-    roles: s.roles,
-    businessUnits: s.businessUnits,
-    departments: s.departments,
-    teams: s.teams,
-    hrGlobalSettings: s.hrGlobalSettings,
-    ohManualByBusinessUnitId: s.ohManualByBusinessUnitId,
-  }));
+  const hrSlice = useHrWorkforceSnapshotSlice();
 
   const {
     company,

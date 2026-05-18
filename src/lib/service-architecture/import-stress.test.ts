@@ -90,7 +90,7 @@ describe("import plan stress cases", () => {
     expect(result.preview.totalsByEntity.serviceDeliverable).toBe(25);
   });
 
-  it("does not produce role allocations in the import plan (allocation gap)", () => {
+  it("produces empty role allocations when import rows have no allocation fields", () => {
     const result = buildServiceCatalogImportPlan([
       {
         ...baseRow,
@@ -102,6 +102,6 @@ describe("import plan stress cases", () => {
       },
     ]);
     expect(result.valid).toBe(true);
-    expect("serviceRoleAllocations" in result.plan).toBe(false);
+    expect(result.plan.serviceRoleAllocations).toEqual([]);
   });
 });

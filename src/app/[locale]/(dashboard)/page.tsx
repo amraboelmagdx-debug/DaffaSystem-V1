@@ -4,10 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { ExecutiveDashboardContent } from "@/components/dashboard/executive-dashboard-content";
 import { OperationalWorkspaceGate } from "@/components/operational-workspace/operational-workspace-gate";
+import { BuContextGate } from "@/components/operational-workspace/bu-context-gate";
 import { SampleDataPanel } from "@/components/sample-data/sample-data-panel";
+import { OperatorPageShell } from "@/components/ox/operator-page-shell";
+import { NextRecommendedAction } from "@/components/ox/next-recommended-action";
+import { Link } from "@/i18n/navigation";
+import { Button } from "@/components/ui/button";
 import { useOperationalWorkspace } from "@/hooks/use-operational-workspace";
-import { useForwardForecast } from "@/hooks/use-forward-forecast";
-import { usePlanningEvaluation } from "@/hooks/use-planning-evaluation";
+import { useEconomicsGraph } from "@/hooks/use-economics-graph";
 import { useAssumptionAttribution } from "@/hooks/use-assumption-attribution";
 import { useOperationalFeasibility } from "@/hooks/use-operational-feasibility";
 import { useScenarioComparison } from "@/hooks/use-scenario-comparison";
@@ -20,6 +24,7 @@ import {
 
 export default function ExecutiveDashboardPage() {
   const t = useTranslations("dashboard");
+  const tOx = useTranslations("ox");
   const { linkedUnits, selectedUnit, setCompany, isReady } = useOperationalWorkspace();
   const selectedScenarioId = useWorkspaceStore((s) => s.selectedScenarioId);
   const setScenario = useWorkspaceStore((s) => s.setScenario);
@@ -58,7 +63,7 @@ export default function ExecutiveDashboardPage() {
     if (!compareScenarioId && selectedScenarioId) setCompareScenarioId(selectedScenarioId);
   }, [compareMode, baselineId, selectedScenarioId, baseScenarioId, compareScenarioId]);
 
-  const evaluation = usePlanningEvaluation({
+  const evaluation = useEconomicsGraph({
     company,
     streams,
     opportunities,
@@ -68,15 +73,12 @@ export default function ExecutiveDashboardPage() {
     scenarioBundles,
   });
 
-  const forwardForecastPhase = useForwardForecast({
-    company,
-    streams,
-    opportunities,
-    scenarios,
-    selectedScenarioId,
-    tierLineOverrides,
-    scenarioBundles,
-  });
+  useEffect(() => {
+    if (evaluation.phase !== "ready" || typeof window === "undefined") return;
+    if (window.location.hash !== "#rolling-forecast") return;
+    const el = document.getElementById("rolling-forecast");
+    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [evaluation.phase]);
 
   const comparison = useScenarioComparison({
     anchorCompany: company ?? companies.find((c) => c.id === anchorCompany?.id),
@@ -142,8 +144,22 @@ export default function ExecutiveDashboardPage() {
   }
 
   return (
-    <OperationalWorkspaceGate>
+    <BuContextGate>
+    <OperatorPageShell
+      routeContext="executive"
+      title={t("title")}
+      purpose={tOx("executive.purpose")}
+      mode="monitor"
+      readOnly
+      showNextAction={linkedUnits.length === 0}
+      headerActions={
+        <Button asChild size="sm">
+          <Link href="/sales-plan">{tOx("executive.editPlanCta")}</Link>
+        </Button>
+      }
+    >
       <SampleDataPanel moduleId="workspace" />
+      {linkedUnits.length === 0 ? <NextRecommendedAction /> : null}
       <ExecutiveDashboardContent
         company={company}
         activeScenario={evaluation.activeScenario}
@@ -162,12 +178,9 @@ export default function ExecutiveDashboardPage() {
         comparison={comparison}
         attribution={attribution}
         operationalFeasibility={operationalFeasibility}
-        forwardForecast={
-          forwardForecastPhase.phase === "ready"
-            ? forwardForecastPhase.forwardForecast
-            : null
-        }
+        forwardForecast={evaluation.forwardForecast ?? null}
       />
-    </OperationalWorkspaceGate>
+    </OperatorPageShell>
+    </BuContextGate>
   );
 }

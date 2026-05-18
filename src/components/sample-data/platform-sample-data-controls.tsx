@@ -5,8 +5,10 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { clearAllSampleData, loadAllSampleData } from "@/lib/sample-data/orchestrator";
+import { isSampleDataUxEnabled } from "@/lib/ox/sample-data-access";
 
 export function PlatformSampleDataControls() {
+  if (!isSampleDataUxEnabled()) return null;
   const t = useTranslations("sampleData");
   const [busy, setBusy] = useState<"load" | "clear" | null>(null);
   const [summary, setSummary] = useState<string | null>(null);

@@ -14,8 +14,9 @@ import {
 } from "@/components/ui/select";
 import { Link } from "@/i18n/navigation";
 import { useServiceArchitectureStore } from "@/stores/use-service-architecture-store";
-import { useHrWorkforceStore } from "@/stores/use-hr-workforce-store";
+import { useActiveHrBusinessUnits } from "@/hooks/use-active-hr-business-units";
 import { useOperationalWorkspace } from "@/hooks/use-operational-workspace";
+import { ServiceTemplateOpportunityTiers } from "@/components/service-architecture/service-template-opportunity-tiers";
 
 export function ServiceTemplatesView() {
   const t = useTranslations("serviceArchitecture");
@@ -26,7 +27,7 @@ export function ServiceTemplatesView() {
   const addServiceTemplate = useServiceArchitectureStore((s) => s.addServiceTemplate);
   const addServiceTemplateTier = useServiceArchitectureStore((s) => s.addServiceTemplateTier);
 
-  const businessUnits = useHrWorkforceStore((s) => s.businessUnits.filter((b) => b.isActive));
+  const businessUnits = useActiveHrBusinessUnits();
   const { selectedUnit } = useOperationalWorkspace();
   const workspaceBuId = selectedUnit?.hrBusinessUnitId ?? businessUnits[0]?.id ?? "";
 
@@ -178,6 +179,12 @@ export function ServiceTemplatesView() {
               {t("linkTierButton")}
             </Button>
             {linkMessage ? <p className="text-xs text-muted-foreground">{linkMessage}</p> : null}
+            {selectedTemplateId &&
+            templates.find((tpl) => tpl.id === selectedTemplateId) ? (
+              <ServiceTemplateOpportunityTiers
+                template={templates.find((tpl) => tpl.id === selectedTemplateId)!}
+              />
+            ) : null}
           </CardContent>
         </Card>
       </div>

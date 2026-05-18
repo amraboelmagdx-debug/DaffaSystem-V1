@@ -1,6 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import {
   Area,
   AreaChart,
@@ -14,6 +15,8 @@ import {
   YAxis,
 } from "recharts";
 import { KpiCard } from "@/components/dashboard/kpi-card";
+import { OxExpandDiagnostics } from "@/components/ox/ox-expand-diagnostics";
+import { MEASURE_ID } from "@/lib/planning/measures/measure-ids";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -40,7 +43,6 @@ import type { ScenarioComparisonPhase } from "@/hooks/use-scenario-comparison";
 import { formatCurrencyLocale, formatPct } from "@/lib/calculations/engine";
 import type { ExecutiveWorkspaceMeasuresResult } from "@/lib/planning/measures";
 import { InsightBulb } from "@/components/planning/insight-bulb";
-import { Link } from "@/i18n/navigation";
 import type { DemoCompany, DemoOpportunity, DemoScenario } from "@/types/domain";
 
 type Props = {
@@ -235,6 +237,7 @@ export function ExecutiveDashboardContent({
           value={fmt(scenarioEngine.revenue)}
           delta={`NP ${formatPct(scenarioEngine.npPct)}`}
           positive={scenarioEngine.netProfit >= 0}
+          measureId={MEASURE_ID.REVENUE_SCENARIO_MONTHLY}
           explanation="Scenario-adjusted revenue after growth, conversion, and mix levers. Use compare mode for baseline deltas."
         />
         <KpiCard
@@ -242,6 +245,7 @@ export function ExecutiveDashboardContent({
           value={fmt(scenarioEngine.netProfit)}
           delta={`Margin ${formatPct(scenarioEngine.npPct)}`}
           positive={scenarioEngine.netProfit >= 0}
+          measureId={MEASURE_ID.NET_PROFIT_SCENARIO_MONTHLY}
           explanation="Net profit equals gross profit minus fixed costs for the period. NP% is net profit divided by revenue."
         />
         <KpiCard
@@ -249,6 +253,7 @@ export function ExecutiveDashboardContent({
           value={formatPct(scenarioEngine.roi)}
           delta={`Burn ${fmt(scenarioEngine.burnRateMonthly)}`}
           positive={scenarioEngine.roi >= 0}
+          measureId={MEASURE_ID.ROI_SCENARIO_ON_FIXED}
           explanation="ROI = Net Profit ÷ Fixed Costs. Values above zero mean operating profit fully covers fixed overhead."
         />
         <KpiCard
@@ -256,6 +261,7 @@ export function ExecutiveDashboardContent({
           value={fmt(scenarioEngine.salesNeededGap)}
           delta={`Target rev ${fmt(scenarioEngine.salesTargetRevenue)}`}
           positive={scenarioEngine.salesNeededGap <= 0}
+          measureId={MEASURE_ID.SALES_GAP_SCENARIO_MONTHLY}
           explanation="Uses Sales Target ≈ Fixed Costs ÷ (Contribution Margin − Target NP). Gap is target revenue minus current scenario revenue."
         />
       </div>
@@ -265,6 +271,7 @@ export function ExecutiveDashboardContent({
           value={formatPct(workbookTargets.blended)}
           delta={tp("workbookTitle")}
           positive={workbookTargets.blended >= 0.35}
+          measureId={MEASURE_ID.CM_BLENDED_WORKBOOK}
           explanation={tp("workbookKpiExplain")}
         />
         <KpiCard
@@ -272,6 +279,7 @@ export function ExecutiveDashboardContent({
           value={workbookSalesLabel}
           delta={tp("npTargetScenario")}
           positive={Number.isFinite(workbookTargets.salesTarget)}
+          measureId={MEASURE_ID.WORKBOOK_SALES_TARGET}
           explanation={tp("workbookKpiExplain")}
         />
         <KpiCard
@@ -279,6 +287,7 @@ export function ExecutiveDashboardContent({
           value={fmt(workbookTargets.netProfitAtTarget)}
           delta={formatPct(activeScenario.npTargetPct)}
           positive={workbookTargets.netProfitAtTarget >= 0}
+          measureId={MEASURE_ID.WORKBOOK_NP_AT_TARGET}
           explanation={tp("workbookKpiExplain")}
         />
         <KpiCard
@@ -286,18 +295,29 @@ export function ExecutiveDashboardContent({
           value={formatPct(workbookTargets.roi)}
           delta={fmt(company.fixedCostsMonthly)}
           positive={workbookTargets.roi >= 0}
+          measureId={MEASURE_ID.WORKBOOK_ROI_ON_FIXED}
           explanation={tp("workbookKpiExplain")}
         />
       </div>
+      <p className="text-end text-xs">
+        <Link
+          href="/grid"
+          className="font-medium text-primary underline-offset-4 hover:underline"
+        >
+          {tp("workbookAdvancedEditorLink")}
+        </Link>
+      </p>
       </>
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <OxExpandDiagnostics>
+        <div className="grid gap-4 lg:grid-cols-3">
         <KpiCard
           title="Forecast achievement"
           value={formatPct(forecastAchievement)}
           delta="Rolling vs plan"
           positive
+          measureId={MEASURE_ID.FORECAST_ACHIEVEMENT_PROXY}
           explanation="Ratio of scenario revenue to a 5% uplift plan proxy. Tune plan targets in company settings."
           className="lg:col-span-1"
         />
@@ -306,6 +326,7 @@ export function ExecutiveDashboardContent({
           value={formatPct(health)}
           delta={`Coverage ${formatPct(coverage)}`}
           positive={health >= 0.25}
+          measureId={MEASURE_ID.PIPELINE_HEALTH}
           explanation="Strength is weighted pipeline ÷ gross pipeline. Coverage compares weighted pipeline to a 3× monthly quota heuristic."
           className="lg:col-span-1"
         />
@@ -314,10 +335,12 @@ export function ExecutiveDashboardContent({
           value={fmt(weightedPipeline)}
           delta={`${opportunities.filter((o) => o.companyId === company.id).length} open deals`}
           positive
+          measureId={MEASURE_ID.PIPELINE_WEIGHTED_VALUE}
           explanation="Σ(deal value × probability) for open opportunities. Drives coverage and forecast risk views."
           className="lg:col-span-1"
         />
-      </div>
+        </div>
+      </OxExpandDiagnostics>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="border-border/60 bg-card/60 backdrop-blur">

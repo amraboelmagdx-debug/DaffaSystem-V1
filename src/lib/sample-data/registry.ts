@@ -26,6 +26,11 @@ import {
   loadWorkspaceSample,
   resetWorkspaceSample,
 } from "./modules/workspace";
+import {
+  clearIncentivesDefaultSample,
+  loadIncentivesDefaultSample,
+  resetIncentivesDefaultSample,
+} from "./modules/incentives-default";
 import type { SampleDataModuleDefinition, SampleDataModuleId } from "./types";
 
 export const SAMPLE_DATA_MODULES: SampleDataModuleDefinition[] = [
@@ -77,6 +82,14 @@ export const SAMPLE_DATA_MODULES: SampleDataModuleDefinition[] = [
     load: loadServiceCostSimulationPrefsSample,
     clear: clearServiceCostSimulationPrefsSample,
     reset: resetServiceCostSimulationPrefsSample,
+  },
+  {
+    id: "incentives-default-v1",
+    labelKey: "incentivesDefault",
+    descriptionKey: "incentivesDefault",
+    load: loadIncentivesDefaultSample,
+    clear: clearIncentivesDefaultSample,
+    reset: resetIncentivesDefaultSample,
   },
 ];
 

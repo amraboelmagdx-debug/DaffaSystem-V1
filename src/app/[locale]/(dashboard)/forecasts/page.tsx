@@ -1,66 +1,26 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { ForwardForecastSection } from "@/components/dashboard/forward-forecast-section";
-import { ExecutiveRollingForecastSection } from "@/components/dashboard/executive-rolling-forecast-section";
-import { OperationalPlanningPageShell } from "@/components/platform-simplification/operational-planning-page-shell";
-import { useForwardForecast } from "@/hooks/use-forward-forecast";
-import { useActivePlanningInputs } from "@/hooks/use-active-planning-inputs";
-import { useOperationalWorkspace } from "@/hooks/use-operational-workspace";
-import {
-  scenariosForCompany,
-  streamsForCompany,
-  useWorkspaceStore,
-} from "@/stores/use-workspace-store";
+import { useRouter } from "@/i18n/navigation";
 
-export default function ForecastsPage() {
-  const t = useTranslations("dashboard.rollingForecast");
-  const { selectedUnit: company } = useOperationalWorkspace();
-  const selectedScenarioId = useWorkspaceStore((s) => s.selectedScenarioId);
-  const opportunities = useWorkspaceStore((s) => s.opportunities);
-  const scenarioBundles = useWorkspaceStore((s) => s.scenarioBundles);
-  const { tierLineOverrides } = useActivePlanningInputs(company?.id);
-  const streams = company ? streamsForCompany(company.id) : [];
-  const scenarios = company ? scenariosForCompany(company.id) : [];
+/** Transitional route — canonical forecast UI lives on Executive (#rolling-forecast). */
+export default function ForecastsRedirectPage() {
+  const router = useRouter();
+  const t = useTranslations("architectureCleanup");
+  const [shown] = useState(true);
 
-  const forwardForecastPhase = useForwardForecast({
-    company,
-    streams,
-    opportunities,
-    scenarios,
-    selectedScenarioId,
-    tierLineOverrides,
-    scenarioBundles,
-  });
+  useEffect(() => {
+    const id = window.setTimeout(() => router.replace("/#rolling-forecast"), 1200);
+    return () => window.clearTimeout(id);
+  }, [router]);
 
   return (
-    <OperationalPlanningPageShell
-      routeContext="forecasts"
-      bannerVariant="transitional"
-      readOnly
-      usesDemoData
-    >
-      {!company ? (
-        <div className="mx-auto max-w-6xl p-8 text-center text-sm text-muted-foreground">
-          {t("emptyState")}
-        </div>
-      ) : (
-        <div className="mx-auto max-w-6xl">
-          {forwardForecastPhase.phase === "ready" ? (
-            <ForwardForecastSection
-              company={company}
-              forwardForecast={forwardForecastPhase.forwardForecast}
-              showPageHeading
-            />
-          ) : (
-            <ExecutiveRollingForecastSection
-              company={company}
-              activeScenarioId={selectedScenarioId}
-              showPageHeading
-            />
-          )}
-        </div>
-      )}
-    </OperationalPlanningPageShell>
+    <div className="flex min-h-[40vh] flex-col items-center justify-center gap-3 p-8 text-center">
+      {shown ? (
+        <p className="max-w-md text-sm text-muted-foreground">{t("redirectToExecutiveForecast")}</p>
+      ) : null}
+      <p className="text-xs text-muted-foreground">{t("redirecting")}</p>
+    </div>
   );
 }

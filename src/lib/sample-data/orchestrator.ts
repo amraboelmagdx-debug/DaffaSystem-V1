@@ -23,6 +23,7 @@ export async function loadAllSampleData(): Promise<SampleDataResult[]> {
     "sales-plan-wizard",
     "commercial-pricing-prefs",
     "service-cost-simulation-prefs",
+    "incentives-default-v1",
   ];
   const results: SampleDataResult[] = [];
   for (const id of order) {
@@ -39,6 +40,7 @@ export async function clearAllSampleData(): Promise<SampleDataResult[]> {
     "hr-workforce",
     "commercial-pricing-prefs",
     "service-cost-simulation-prefs",
+    "incentives-default-v1",
   ];
   const results: SampleDataResult[] = [];
   for (const id of order) {

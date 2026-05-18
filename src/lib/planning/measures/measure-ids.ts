@@ -71,6 +71,9 @@ export const MEASURE_ID = {
   OPERATIONAL_DEMAND_HOURS: "operational.demandHours",
   OPERATIONAL_SUPPLY_HOURS: "operational.supplyHours",
   OPERATIONAL_HIRING_FTE_GAP: "operational.hiringFteGap",
+
+  INCENTIVE_POOL_COMPANY_TOTAL: "incentive.pool.companyTotalSar",
+  INCENTIVE_POOL_RETAINED: "incentive.pool.retainedSar",
 } as const;
 
 export type MeasureId = (typeof MEASURE_ID)[keyof typeof MEASURE_ID];

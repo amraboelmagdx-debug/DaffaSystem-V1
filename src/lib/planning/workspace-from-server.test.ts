@@ -61,7 +61,14 @@ describe("workspace-from-server", () => {
     expect(model.companies[0]?.fixedCostsMonthly).toBe(120000);
 
     const applied = applyPlanningClientModelToWorkspaceState(model);
+    expect(applied.selectedCompanyId).toBe("");
     expect(applied.companies[0]?.hrBusinessUnitId).toBe("bu_hr_1");
     expect(applied.streams[0]?.name).toBe("Delivery");
+
+    const preserved = applyPlanningClientModelToWorkspaceState(model, {
+      preserveSelectedCompanyId: "co-uuid-1",
+    });
+    expect(preserved.selectedCompanyId).toBe("co-uuid-1");
+    expect(preserved.selectedScenarioId).toBe("sc-1");
   });
 });

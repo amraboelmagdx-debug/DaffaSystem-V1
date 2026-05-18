@@ -1,4 +1,5 @@
 import { DEMO_ORG_ID } from "@/data/demo-seed";
+import { buildPersistenceStatusSnapshot } from "@/lib/persistence/persistence-status";
 import { isTenantNamespacedPersistEnabled } from "@/lib/persistence/persist-mode";
 import { isOrphanOperationalUnit } from "@/lib/platform-economics/operational-unit";
 import type { DemoCompany } from "@/types/domain";
@@ -67,6 +68,26 @@ export function emitWave0DevWarnings(input: Wave0DevWarningInput): void {
     }
   }
 
+  const persist = buildPersistenceStatusSnapshot();
+  if (persist.supabaseConfigured && persist.persistMode === "local_only") {
+    warnOnce(
+      `persist-misconfig:${routeContext}`,
+      "Supabase URL is set but NEXT_PUBLIC_PERSIST_MODE=local_only. Pilot should use dual_write or server_authoritative."
+    );
+  }
+  if (persist.incentiveBackendHint === "memory") {
+    warnOnce(
+      `incentive-memory:${routeContext}`,
+      "Incentive API is using in-memory fallback. Data will not survive server restart."
+    );
+  }
+  if (persist.incentiveBackendHint === "unavailable") {
+    warnOnce(
+      `incentive-unavailable:${routeContext}`,
+      "Incentive persistence unavailable. Configure Supabase or INCENTIVE_ALLOW_MEMORY_FALLBACK=true."
+    );
+  }
+
   if (
     typeof window !== "undefined" &&
     isTenantNamespacedPersistEnabled() &&
@@ -74,7 +95,7 @@ export function emitWave0DevWarnings(input: Wave0DevWarningInput): void {
   ) {
     for (const key of GLOBAL_NON_TENANT_PERSIST_KEYS) {
       try {
-        const raw = localStorage.getItem(key);
+        const raw = window.localStorage.getItem(key);
         if (raw && raw.length > 2) {
           warnOnce(
             `global-persist:${key}`,

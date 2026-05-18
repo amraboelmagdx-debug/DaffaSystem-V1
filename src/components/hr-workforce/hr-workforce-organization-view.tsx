@@ -27,7 +27,10 @@ import {
   requestHrPlanningSyncDebounced,
   requestHrPlanningSyncNow,
 } from "@/lib/platform-economics/request-hr-planning-sync";
+import { persistNewBusinessUnitAndSync } from "@/lib/hr-workforce/add-business-unit-flow";
+import { SetActiveBuDialog } from "@/components/hr-workforce/set-active-bu-dialog";
 import { useHrWorkforceStore } from "@/stores/use-hr-workforce-store";
+import { useWorkspaceStore } from "@/stores/use-workspace-store";
 
 const OH_COMPONENT_CATEGORIES = ["General", "Facilities", "IT", "Professional", "G&A", "Other"] as const;
 
@@ -64,7 +67,15 @@ export function HrWorkforceOrganizationView() {
   const deleteImportLog = useHrWorkforceStore((s) => s.deleteImportLog);
   const clearAllImportLogs = useHrWorkforceStore((s) => s.clearAllImportLogs);
 
+  const setCompany = useWorkspaceStore((s) => s.setCompany);
   const [buName, setBuName] = useState("");
+  const [addingBu, setAddingBu] = useState(false);
+  const [addBuError, setAddBuError] = useState<string | null>(null);
+  const [pendingActiveBu, setPendingActiveBu] = useState<{
+    buId: string;
+    buName: string;
+    companyId?: string;
+  } | null>(null);
   const [deptName, setDeptName] = useState("");
   const [deptBuId, setDeptBuId] = useState(() => businessUnits[0]?.id ?? "");
   const [teamName, setTeamName] = useState("");
@@ -164,6 +175,9 @@ export function HrWorkforceOrganizationView() {
         </TabsList>
 
         <TabsContent value="structure" className="space-y-6 pt-4">
+          <p className="rounded-md border border-border/50 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+            {t("organizationalScopeHint")}
+          </p>
           <Card>
             <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-2 space-y-0">
               <div>
@@ -203,20 +217,49 @@ export function HrWorkforceOrganizationView() {
               </Button>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="flex flex-wrap gap-2">
-                <Input value={buName} dir="auto" onChange={(e) => setBuName(e.target.value)} placeholder={t("buNamePh")} className="max-w-xs" />
+              <div className="flex flex-wrap items-end gap-2 rounded-md border border-dashed border-border/60 bg-muted/10 p-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">{t("addBuFieldLabel")}</Label>
+                  <Input
+                    value={buName}
+                    dir="auto"
+                    onChange={(e) => setBuName(e.target.value)}
+                    placeholder={t("buNamePh")}
+                    className="max-w-xs"
+                    disabled={addingBu}
+                  />
+                </div>
                 <Button
                   type="button"
                   variant="secondary"
+                  disabled={addingBu || !buName.trim()}
                   onClick={() => {
-                    addBusinessUnit({ name: buName });
+                    const trimmed = buName.trim();
+                    if (!trimmed) return;
+                    setAddingBu(true);
+                    setAddBuError(null);
+                    const created = addBusinessUnit({ name: trimmed });
                     setBuName("");
-                    requestHrPlanningSyncDebounced();
+                    void persistNewBusinessUnitAndSync(created).then((result) => {
+                      setAddingBu(false);
+                      if (!result.ok) {
+                        setAddBuError(result.error ?? t("addBuFailed"));
+                        return;
+                      }
+                      setPendingActiveBu({
+                        buId: created.id,
+                        buName: created.name,
+                        companyId: result.companyId,
+                      });
+                    });
                   }}
                 >
-                  {t("addBU")}
+                  {addingBu ? t("addingBu") : t("addBU")}
                 </Button>
               </div>
+              {addBuError ? (
+                <p className="text-xs text-destructive">{addBuError}</p>
+              ) : null}
               <table className="app-data-table">
                 <thead>
                   <tr>
@@ -1058,6 +1101,24 @@ export function HrWorkforceOrganizationView() {
           </Button>
         </TabsContent>
       </Tabs>
+
+      <SetActiveBuDialog
+        open={pendingActiveBu != null}
+        unitName={pendingActiveBu?.buName ?? ""}
+        onOpenChange={(open) => {
+          if (!open) setPendingActiveBu(null);
+        }}
+        onConfirm={() => {
+          const pending = pendingActiveBu;
+          setPendingActiveBu(null);
+          if (!pending) return;
+          const companyId =
+            pending.companyId ??
+            useWorkspaceStore.getState().companies.find((c) => c.hrBusinessUnitId === pending.buId)?.id;
+          if (companyId) setCompany(companyId);
+        }}
+        onDecline={() => setPendingActiveBu(null)}
+      />
     </div>
   );
 }

@@ -254,7 +254,6 @@ export const useHrWorkforceStore = create<HrWorkforceState>()(
             [u.id]: { ...DEFAULT_OH },
           },
         });
-        notifyHrStructureChangedDebounced();
         return u;
       },
 

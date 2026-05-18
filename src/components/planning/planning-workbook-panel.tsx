@@ -41,12 +41,11 @@ export function PlanningWorkbookPanel() {
     resetTierLinesForCompany,
   } = useWorkspaceStore();
 
-  const anchor = companies.find((c) => c.id === selectedCompanyId) ?? companies[0];
+  const anchor = companies.find((c) => c.id === selectedCompanyId);
   const { company, tierLineOverrides } = useActivePlanningInputs(anchor?.id);
-  if (!company) return null;
-  const scenarios = scenariosForCompany(company.id);
+  const scenarios = company ? scenariosForCompany(company.id) : [];
   const scenario = scenarios.find((s) => s.id === selectedScenarioId) ?? scenarios[0];
-  const streams = streamsForCompany(company.id);
+  const streams = company ? streamsForCompany(company.id) : [];
 
   const streamGroups = useMemo(
     () =>
@@ -57,18 +56,29 @@ export function PlanningWorkbookPanel() {
     [streams, tierLineOverrides]
   );
 
-  const npTarget = scenario?.npTargetPct ?? company.npTargetPct;
+  const npTarget = scenario?.npTargetPct ?? company?.npTargetPct ?? 0;
 
   const { blendedWorkbook: blended, workbookTargets: targets } = useMemo(
-    () =>
-      computeWorkbookPlanningSlice({
+    () => {
+      if (!company) {
+        return computeWorkbookPlanningSlice({
+          streams: [],
+          tierLineOverrides: {},
+          fixedCostsMonthly: 0,
+          npTargetPct: 0,
+        });
+      }
+      return computeWorkbookPlanningSlice({
         streams,
         tierLineOverrides,
         fixedCostsMonthly: company.fixedCostsMonthly,
         npTargetPct: npTarget,
-      }),
-    [streams, tierLineOverrides, company.fixedCostsMonthly, npTarget]
+      });
+    },
+    [streams, tierLineOverrides, company, npTarget]
   );
+
+  if (!company) return null;
 
   const salesLabel =
     Number.isFinite(targets.salesTarget) && targets.salesTarget < 1e14

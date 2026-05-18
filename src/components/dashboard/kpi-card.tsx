@@ -9,6 +9,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { OxExplainMetric } from "@/components/ox/ox-explain-metric";
+import type { MeasureId } from "@/lib/planning/measures/measure-ids";
 
 interface KpiCardProps {
   title: string;
@@ -16,6 +18,7 @@ interface KpiCardProps {
   delta?: string;
   positive?: boolean;
   explanation: string;
+  measureId?: MeasureId;
   className?: string;
 }
 
@@ -25,6 +28,7 @@ export function KpiCard({
   delta,
   positive,
   explanation,
+  measureId,
   className,
 }: KpiCardProps) {
   return (
@@ -43,20 +47,24 @@ export function KpiCard({
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             {title}
           </p>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                aria-label={`About ${title}`}
-              >
-                <HelpCircle className="h-3.5 w-3.5" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="max-w-xs text-xs leading-relaxed">
-              {explanation}
-            </TooltipContent>
-          </Tooltip>
+          {measureId ? (
+            <OxExplainMetric measureId={measureId} />
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  aria-label={`About ${title}`}
+                >
+                  <HelpCircle className="h-3.5 w-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-xs text-xs leading-relaxed">
+                {explanation}
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
         <p className="mt-3 text-2xl font-semibold tracking-tight">{value}</p>
         {delta && (

@@ -1,5 +1,6 @@
 import { create } from "zustand";
-import { createJSONStorage, persist } from "zustand/middleware";
+import { persist } from "zustand/middleware";
+import { createBrowserJSONStorage } from "@/lib/persistence/browser-storage";
 import type { ServiceCostAssumptions } from "@/lib/service-cost-simulation/types";
 import { DEFAULT_SERVICE_COST_ASSUMPTIONS } from "@/lib/service-cost-simulation/defaults";
 
@@ -28,7 +29,7 @@ export const useServiceCostSimulationPrefsStore = create<ServiceCostSimulationPr
     }),
     {
       name: "efp-service-cost-simulation-prefs-v1",
-      storage: createJSONStorage(() => localStorage),
+      storage: createBrowserJSONStorage(),
       partialize: (s) => ({
         assumptions: s.assumptions,
         scenarioId: s.scenarioId,

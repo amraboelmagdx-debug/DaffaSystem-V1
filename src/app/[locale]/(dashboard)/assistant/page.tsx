@@ -35,7 +35,7 @@ export default function AssistantPage() {
     scenarios,
     scenarioBundles,
   } = useWorkspaceStore();
-  const company = companies.find((c) => c.id === selectedCompanyId) ?? companies[0];
+  const company = companies.find((c) => c.id === selectedCompanyId);
 
   const evaluation = useMemo(() => {
     if (!company) return null;

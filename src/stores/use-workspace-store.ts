@@ -20,7 +20,21 @@ import {
   scenariosForSelectors,
   scenariosFromBundles,
 } from "@/lib/planning/scenario";
-import { persistScenarioBundleToServer } from "@/lib/planning/scenario/persist-scenario-api";
+import {
+  persistScenarioBundleToServer,
+  type ScenarioPersistResult,
+} from "@/lib/planning/scenario/persist-scenario-api";
+
+function persistBundleAsync(
+  bundle: Parameters<typeof persistScenarioBundleToServer>[0],
+  mode: Parameters<typeof persistScenarioBundleToServer>[1]
+): void {
+  void persistScenarioBundleToServer(bundle, mode).then((result: ScenarioPersistResult) => {
+    if (!result.ok && process.env.NODE_ENV === "development") {
+      console.warn("[EFP] Scenario bundle persist failed:", result.message);
+    }
+  });
+}
 import { newPlanningScenarioId } from "@/lib/planning/scenario/scenario-id";
 import { resolveEffectiveCompany } from "@/lib/planning/scenario/resolve-effective-planning";
 import type { CompanyPlanningOverlay, ScenarioPlanningBundle } from "@/types/planning-scenario";
@@ -82,6 +96,7 @@ interface WorkspaceState {
   /** @deprecated Global tier map — migrated into active bundle; kept for persist transition. */
   tierLineOverrides: Record<string, TierLine[]>;
   setCompany: (id: string) => void;
+  clearOperationalContext: () => void;
   setScenario: (id: string) => void;
   updateCompany: (id: string, patch: Partial<DemoCompany>) => void;
   updateActiveScenarioOverlay: (patch: Partial<CompanyPlanningOverlay>) => void;
@@ -191,6 +206,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           const firstSc = scenariosForCo[0]?.id ?? "";
           return { selectedCompanyId: id, selectedScenarioId: firstSc };
         }),
+      clearOperationalContext: () => set({ selectedCompanyId: "", selectedScenarioId: "" }),
       setScenario: (id) => set({ selectedScenarioId: id }),
       updateCompany: (id, patch) =>
         set({
@@ -213,7 +229,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         const next = touchScenarioGovernance(prev, patch);
         bundles[id] = next;
         set(syncFromBundles(bundles));
-        void persistScenarioBundleToServer(next, "update");
+        persistBundleAsync(next, "update");
       },
       setScenarioStatus: (id, status) => {
         get().updateScenarioGovernance(id, { status });
@@ -238,7 +254,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         const next = bumpBundle(prev, patch);
         bundles[id] = next;
         set(syncFromBundles(bundles));
-        void persistScenarioBundleToServer(next, "update");
+        persistBundleAsync(next, "update");
       },
       setScenarioDescription: (id, description) => {
         const bundles = { ...get().scenarioBundles };
@@ -251,7 +267,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           updatedAt: new Date().toISOString(),
         };
         set(syncFromBundles(bundles));
-        void persistScenarioBundleToServer(bundles[id]!, "update");
+        persistBundleAsync(bundles[id]!, "update");
       },
       createScenario: ({ companyId, name, cloneFromId, scenarioType }) => {
         const company = get().companies.find((c) => c.id === companyId);
@@ -290,7 +306,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           selectedScenarioId: bundle.scenario.id,
           selectedCompanyId: companyId,
         });
-        void persistScenarioBundleToServer(bundle, "create");
+        persistBundleAsync(bundle, "create");
         return bundle.scenario.id;
       },
       updateOpportunity: (id, patch) =>
@@ -401,7 +417,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           selectedCompanyId: companyId,
           selectedScenarioId: scenarioId,
         });
-        void persistScenarioBundleToServer(bundles[scenarioId]!, "update");
+        persistBundleAsync(bundles[scenarioId]!, "update");
         return true;
       },
       applySalesPlanToOperationalUnit: (payload) => {

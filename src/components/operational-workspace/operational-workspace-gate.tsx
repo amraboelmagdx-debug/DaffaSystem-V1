@@ -61,6 +61,20 @@ export function OperationalWorkspaceGate({ children, loadingLabel }: Props) {
 
 
   if (isHydrating) {
+    // #region agent log
+    fetch("http://127.0.0.1:7809/ingest/ebe5ab7e-6741-479f-b910-4578b2ccf986", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "f77448" },
+      body: JSON.stringify({
+        sessionId: "f77448",
+        hypothesisId: "D",
+        location: "operational-workspace-gate.tsx:hydrating",
+        message: "gate blocking render — isHydrating true",
+        data: { pathname, hrActiveBuCount, bootstrapError: bootstrapError ?? null },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
 
     return (
 

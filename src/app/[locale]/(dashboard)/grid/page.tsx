@@ -19,8 +19,9 @@ type MetricKey = "revenue" | "grossProfit" | "netProfit";
 
 export default function ForecastGridPage() {
   const tp = useTranslations("planning");
+  const ta = useTranslations("architectureCleanup");
   const { companies, selectedCompanyId } = useWorkspaceStore();
-  const company = companies.find((c) => c.id === selectedCompanyId) ?? companies[0];
+  const company = companies.find((c) => c.id === selectedCompanyId);
   const base = useMemo(
     () => (company ? buildDemoForecastSeries(company) : []),
     [company]
@@ -159,6 +160,7 @@ export default function ForecastGridPage() {
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">{tp("matrixTitle")}</h1>
           <p className="mt-2 text-sm text-muted-foreground">{tp("matrixSubtitle")}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{ta("gridSandboxHint")}</p>
           <div className="mt-2 flex flex-wrap gap-2">
             <Badge variant={dbStatus === "ok" ? "success" : "secondary"}>
               {dbStatus === "ok" ? "PostgreSQL" : tp("noDatabase")}

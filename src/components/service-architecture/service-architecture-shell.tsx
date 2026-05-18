@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 
 import { OperationalBuToolbar } from "@/components/operational-workspace/operational-bu-toolbar";
 import { OperationalWorkspaceGate } from "@/components/operational-workspace/operational-workspace-gate";
+import { BuContextGate } from "@/components/operational-workspace/bu-context-gate";
 import { ServiceArchitectureSubnav } from "@/components/service-architecture/service-architecture-subnav";
 import { useOperationalWorkspace } from "@/hooks/use-operational-workspace";
 
@@ -34,7 +35,7 @@ export function ServiceArchitectureShell({ children }: { children: ReactNode }) 
             <p className="text-xs text-muted-foreground">{tDash("emptyLinkedUnitsHint")}</p>
           </div>
         ) : (
-          children
+          <BuContextGate>{children}</BuContextGate>
         )}
       </OperationalWorkspaceGate>
     </div>

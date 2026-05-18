@@ -8,10 +8,7 @@ import { useOperationalWorkspace } from "@/hooks/use-operational-workspace";
 import { runSampleDataAction } from "@/lib/sample-data/orchestrator";
 import type { SampleDataAction, SampleDataModuleId } from "@/lib/sample-data/types";
 import { SAMPLE_PACK_ID } from "@/lib/sample-data/types";
-
-function isExplicitSampleDataEnabled(): boolean {
-  return process.env.NEXT_PUBLIC_ENABLE_SAMPLE_DATA === "true";
-}
+import { isSampleDataUxEnabled } from "@/lib/ox/sample-data-access";
 
 const MODULES_HIDDEN_WHEN_LINKED: SampleDataModuleId[] = [
   "workspace",
@@ -26,6 +23,7 @@ const MODULE_LABEL_KEYS: Record<SampleDataModuleId, string> = {
   "sales-plan-wizard": "salesPlanWizard",
   "commercial-pricing-prefs": "commercialPricingPrefs",
   "service-cost-simulation-prefs": "serviceCostSimulationPrefs",
+  "incentives-default-v1": "incentivesDefault",
 };
 
 type Props = {
@@ -44,7 +42,7 @@ export function SampleDataPanel({ moduleId, className }: Props) {
   const hidden =
     MODULES_HIDDEN_WHEN_LINKED.includes(moduleId) &&
     linkedUnits.length > 0 &&
-    !isExplicitSampleDataEnabled();
+    !isSampleDataUxEnabled();
 
   const run = useCallback(
     async (action: SampleDataAction) => {

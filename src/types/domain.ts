@@ -1,4 +1,5 @@
-import type { OpportunityTierDefinition } from "@/types/sales-plan";
+import type { OpportunityTierDefinition, OpportunityTierKey } from "@/types/sales-plan";
+import type { IncentiveProposalComplexity } from "@/types/incentives";
 
 export type AppRole =
   | "admin"
@@ -74,6 +75,15 @@ export interface DemoScenario {
   pipelineWeightAdj: number;
 }
 
+export type OpportunityClientType = "new_client" | "existing_client";
+
+export type OpportunitySalesPhaseAttribution = {
+  lead_gen: number;
+  technical: number;
+  financial: number;
+  closing: number;
+};
+
 export interface DemoOpportunity {
   id: string;
   companyId: string;
@@ -85,6 +95,15 @@ export interface DemoOpportunity {
   revenueStreamId: string;
   marketSegment: string;
   riskScore: number;
+  /** Canonical deal-size tier (Sales Plan SAR bands). */
+  tierKey?: OpportunityTierKey;
+  referral?: boolean;
+  clientType?: OpportunityClientType;
+  complexity?: Exclude<IncentiveProposalComplexity, "any">;
+  /** Optional margin for incentive pool (SAR). */
+  marginSar?: number;
+  /** Comp phase weights; defaults applied in incentive bridge when omitted. */
+  salesPhaseAttribution?: OpportunitySalesPhaseAttribution;
 }
 
 export interface DemoForecastMonth {

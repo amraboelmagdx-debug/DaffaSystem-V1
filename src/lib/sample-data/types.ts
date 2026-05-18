@@ -5,7 +5,8 @@ export type SampleDataModuleId =
   | "workspace"
   | "sales-plan-wizard"
   | "commercial-pricing-prefs"
-  | "service-cost-simulation-prefs";
+  | "service-cost-simulation-prefs"
+  | "incentives-default-v1";
 
 export type SampleDataAction = "load" | "clear" | "reset";
 
