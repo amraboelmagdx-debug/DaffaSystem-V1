@@ -56,9 +56,7 @@ function allocationLinesFromCost(
 }
 
 function minSellPriceFromCommercial(
-  commercial: Omit<CommercialPricingIntelligenceInput, "model"> & {
-    basis: CommercialPricingIntelligenceInput["basis"];
-  }
+  commercial: Omit<CommercialPricingIntelligenceInput, "model">
 ): number | undefined {
   const costPlus = runCommercialPricingIntelligence({
     ...commercial,
@@ -90,7 +88,7 @@ export function evaluateServiceEconomics(
     buildServiceCostSimulationInput({
       catalog: input.catalog,
       workforce: input.workforce,
-      roles: input.roles,
+      roles: input.roles as Parameters<typeof buildServiceCostSimulationInput>[0]["roles"],
       serviceTemplateId: input.serviceTemplateId,
       serviceTierId: input.serviceTierId,
       assumptions: input.assumptions,
@@ -130,7 +128,6 @@ export function evaluateServiceEconomics(
       contributionMarginPct = commercialResult.margins.contributionMarginPct;
       minSellPrice = minSellPriceFromCommercial({
         basis,
-        model: input.commercial.model,
         activeRiskIds: input.commercial.activeRiskIds,
         scenario: input.commercial.scenario,
         thresholds: input.commercial.thresholds,

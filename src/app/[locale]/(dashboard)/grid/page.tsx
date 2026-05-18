@@ -17,7 +17,10 @@ export default function ForecastGridPage() {
   const tp = useTranslations("planning");
   const { companies, selectedCompanyId } = useWorkspaceStore();
   const company = companies.find((c) => c.id === selectedCompanyId) ?? companies[0];
-  const base = useMemo(() => buildDemoForecastSeries(company), [company]);
+  const base = useMemo(
+    () => (company ? buildDemoForecastSeries(company) : []),
+    [company]
+  );
   const [grid, setGrid] = useState(() =>
     base.map((r) => ({
       month: r.month,
@@ -51,6 +54,7 @@ export default function ForecastGridPage() {
   }, []);
 
   const updateCell = (row: number, key: MetricKey, value: number) => {
+    if (!company) return;
     setGrid((prev) => {
       const next = [...prev];
       const copy = { ...next[row], [key]: value };
@@ -82,6 +86,7 @@ export default function ForecastGridPage() {
   };
 
   const downloadExport = async (format: "csv" | "xlsx" | "pdf") => {
+    if (!company) return;
     const res = await fetch("/api/planning/export", {
       method: "POST",
       credentials: "include",
@@ -126,6 +131,20 @@ export default function ForecastGridPage() {
       .filter((r) => r.month);
     if (parsed.length) setGrid(parsed);
   };
+
+  if (!company) {
+    return (
+      <OperationalPlanningPageShell
+        routeContext="grid"
+        bannerVariant="derived"
+        usesDemoData
+      >
+        <div className="mx-auto max-w-[1100px] p-8 text-center text-sm text-muted-foreground">
+          Select or sync a business unit to edit the forecast matrix.
+        </div>
+      </OperationalPlanningPageShell>
+    );
+  }
 
   return (
     <OperationalPlanningPageShell

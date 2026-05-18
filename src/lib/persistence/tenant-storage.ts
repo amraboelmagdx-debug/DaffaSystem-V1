@@ -48,7 +48,7 @@ export function resolvePersistStorageKey(baseKey: string): string | null {
     recordHrPersistKeyResolution({
       namespacedPersistEnabled: namespacedEnabled,
       activeOrganizationId: orgId,
-      lastResolvedHrPersistKey: key,
+      lastResolvedHrPersistKey: key ?? "",
       usingLegacyFallback: key != null && key === legacyPersistKeyForBase(baseKey),
     });
   }

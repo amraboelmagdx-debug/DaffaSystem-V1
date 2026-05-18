@@ -35,19 +35,16 @@ type Props = {
 
 export function SampleDataPanel({ moduleId, className }: Props) {
   const { linkedUnits } = useOperationalWorkspace();
-  if (
-    MODULES_HIDDEN_WHEN_LINKED.includes(moduleId) &&
-    linkedUnits.length > 0 &&
-    !isExplicitSampleDataEnabled()
-  ) {
-    return null;
-  }
-
   const t = useTranslations("sampleData");
   const labelKey = MODULE_LABEL_KEYS[moduleId];
   const [busy, setBusy] = useState<SampleDataAction | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const hidden =
+    MODULES_HIDDEN_WHEN_LINKED.includes(moduleId) &&
+    linkedUnits.length > 0 &&
+    !isExplicitSampleDataEnabled();
 
   const run = useCallback(
     async (action: SampleDataAction) => {
@@ -76,6 +73,10 @@ export function SampleDataPanel({ moduleId, className }: Props) {
     },
     [moduleId, t]
   );
+
+  if (hidden) {
+    return null;
+  }
 
   return (
     <Card className={className ?? "border-muted/60 bg-muted/20"}>

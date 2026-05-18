@@ -27,18 +27,16 @@ export function mapPlanningDtoToClientModel(
   const companies: DemoCompany[] = (dto.companies ?? [])
     .filter((c) => !metaRetired(c.metadata))
     .map((c) => {
-      const meta = c.metadata;
       const segments = Array.isArray(c.market_segments)
         ? (c.market_segments as string[])
         : [];
+      const hrBusinessUnitId =
+        hrByCompany.get(c.id) ?? metaField(c.metadata, "hrBusinessUnitId") ?? undefined;
       return {
         id: c.id,
         name: c.name,
         organizationId,
-        ...((): { hrBusinessUnitId?: string } => {
-          const id = hrByCompany.get(c.id) ?? metaField(c.metadata, "hrBusinessUnitId");
-          return id ? { hrBusinessUnitId: id } : {};
-        })(),
+        ...(hrBusinessUnitId ? { hrBusinessUnitId } : {}),
         fixedCostsMonthly: Number(c.fixed_costs_monthly ?? 0),
         growthTargetPct: Number(c.growth_target_pct ?? 0),
         marginTargetPct: Number(c.margin_target_pct ?? 0),

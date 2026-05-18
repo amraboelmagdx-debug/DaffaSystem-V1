@@ -35,7 +35,9 @@
     "baseline": "Baseline",
     "simulation": "Simulation",
     "emptyLinkedUnits": "No HR-linked business units in the planning workspace yet.",
-    "emptyLinkedUnitsHint": "Create or import business units in HR Workforce — they sync to Executive automatically when saved."
+    "emptyLinkedUnitsHint": "Create or import business units in HR Workforce — they sync to Executive automatically when saved.",
+    "emptyScenarios": "No planning scenarios for this business unit yet.",
+    "emptyScenariosHint": "Bootstrap or sync the workspace to seed a baseline scenario, or select another business unit."
   },
   "workspace": {
     "hydrating": "Loading planning workspace from HR…",

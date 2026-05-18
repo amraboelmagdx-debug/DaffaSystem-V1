@@ -47,6 +47,7 @@ export type HrImportSlice = Pick<
   | "importSessionPlan"
   | "importSessionLastDryRunAt"
   | "importSessionReplaceExisting"
+  | "importSessionTenantOrganizationName"
   | "importSessionSetReplaceExisting"
   | "pushImportLog"
   | "deleteImportLog"

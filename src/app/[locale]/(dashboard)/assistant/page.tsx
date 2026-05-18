@@ -26,8 +26,15 @@ export default function AssistantPage() {
   const { companies, selectedCompanyId, opportunities, selectedScenarioId } =
     useWorkspaceStore();
   const company = companies.find((c) => c.id === selectedCompanyId) ?? companies[0];
+  if (!company) {
+    return (
+      <div className="mx-auto max-w-2xl p-8 text-center text-sm text-muted-foreground">
+        Select or sync a business unit to use the planning assistant.
+      </div>
+    );
+  }
   const hrBusinessUnitId =
-    company?.hrBusinessUnitId ?? resolveBusinessUnitIdForCompany(company?.id ?? "", companies);
+    company.hrBusinessUnitId ?? resolveBusinessUnitIdForCompany(company.id, companies);
   const streams = streamsForCompany(company.id);
   const scenario =
     scenariosForCompany(company.id).find((s) => s.id === selectedScenarioId) ??

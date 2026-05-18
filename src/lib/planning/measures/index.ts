@@ -27,7 +27,19 @@ export {
   evaluateExecutiveWorkspaceMeasures,
   type ExecutiveWorkspaceMeasuresResult,
   type MeasureLineage,
+  type MeasureLineageOwner,
 } from "./executive-workspace-measures";
+export {
+  resolvePlanningEvaluation,
+  resolveActiveScenario,
+  assertPlanningEvaluationContext,
+  PlanningEvaluationInvariantError,
+  type PlanningEvaluationBlockReason,
+  type PlanningEvaluationReady,
+  type PlanningEvaluationBlocked,
+  type PlanningEvaluationResolution,
+  type ResolvePlanningEvaluationInput,
+} from "./planning-evaluation-readiness";
 export { evaluatePlanningMeasures } from "./measure-evaluator";
 export { formatPlanningMeasureValue } from "./measure-formatters";
 export type { KpiLineage } from "./measure-lineage";

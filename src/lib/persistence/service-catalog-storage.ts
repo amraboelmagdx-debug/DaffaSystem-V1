@@ -21,7 +21,7 @@ function catalogFromPersistBlob(value: string): ServiceArchitectureCatalogPayloa
     const raw = parsed.state ?? (parsed as unknown as Record<string, unknown>);
     if (!raw || typeof raw !== "object") return null;
     return partializeServiceCatalogFromState(
-      raw as Parameters<typeof partializeServiceCatalogFromState>[0]
+      raw as unknown as Parameters<typeof partializeServiceCatalogFromState>[0]
     );
   } catch {
     return null;

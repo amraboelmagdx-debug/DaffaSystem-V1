@@ -1,17 +1,16 @@
 "use client";
 
-import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { OperationalPlanningPageShell } from "@/components/platform-simplification/operational-planning-page-shell";
+import { usePlanningEvaluation } from "@/hooks/use-planning-evaluation";
 import {
   scenariosForCompany,
   streamsForCompany,
   useWorkspaceStore,
 } from "@/stores/use-workspace-store";
 import { formatCurrency, formatPct } from "@/lib/calculations/engine";
-import { evaluateExecutiveWorkspaceMeasures } from "@/lib/planning/measures";
 
 export default function ScenariosPage() {
   const { companies, selectedCompanyId, opportunities, selectedScenarioId, tierLineOverrides } =
@@ -20,26 +19,23 @@ export default function ScenariosPage() {
   const scenarios = company ? scenariosForCompany(company.id) : [];
   const streams = company ? streamsForCompany(company.id) : [];
 
-  const { scenarioById } = useMemo(
-    () =>
-      company
-        ? evaluateExecutiveWorkspaceMeasures({
-            company,
-            streams,
-            opportunities,
-            scenarios,
-            activeScenarioId: selectedScenarioId || scenarios[0]?.id || "",
-            tierLineOverrides,
-          })
-        : { scenarioById: {} },
-    [company, streams, opportunities, scenarios, selectedScenarioId, tierLineOverrides]
-  );
-
-  const cards = scenarios.flatMap((sc) => {
-    const out = scenarioById[sc.id];
-    if (!out) return [];
-    return [{ sc, out }];
+  const evaluation = usePlanningEvaluation({
+    company,
+    streams,
+    opportunities,
+    scenarios,
+    selectedScenarioId,
+    tierLineOverrides,
   });
+
+  const cards =
+    evaluation.phase === "ready"
+      ? scenarios.flatMap((sc) => {
+          const out = evaluation.measures.scenarioById[sc.id];
+          if (!out) return [];
+          return [{ sc, out }];
+        })
+      : [];
 
   return (
     <OperationalPlanningPageShell routeContext="scenarios" bannerVariant="transitional">
@@ -52,8 +48,12 @@ export default function ScenariosPage() {
             scenario records.
           </p>
         </div>
-        {!company ? (
-          <p className="text-sm text-muted-foreground">Select a business unit to compare scenarios.</p>
+        {evaluation.phase === "blocked" ? (
+          <p className="text-sm text-muted-foreground">
+            {evaluation.reason === "no_scenarios"
+              ? "No scenarios for this business unit. Sync or bootstrap the workspace to add a baseline scenario."
+              : "Select a business unit to compare scenarios."}
+          </p>
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
             {cards.map(({ sc, out }, i) => (

@@ -1,8 +1,8 @@
 "use client";
 
+import { Suspense, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useParams, useSearchParams } from "next/navigation";
-import { useState } from "react";
 import { Link, useRouter } from "@/i18n/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 
-export default function LoginPage() {
+function LoginPageContent() {
   const t = useTranslations("login");
   const params = useParams<{ locale: string }>();
   const searchParams = useSearchParams();
@@ -80,5 +80,19 @@ export default function LoginPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center p-6 text-sm text-muted-foreground">
+          …
+        </div>
+      }
+    >
+      <LoginPageContent />
+    </Suspense>
   );
 }

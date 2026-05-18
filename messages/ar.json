@@ -33,7 +33,11 @@
     "company": "وحدة أعمال",
     "scenario": "السيناريو",
     "baseline": "أساس",
-    "simulation": "محاكاة"
+    "simulation": "محاكاة",
+    "emptyLinkedUnits": "لا توجد وحدات أعمال مرتبطة بالموارد البشرية في مساحة التخطيط بعد.",
+    "emptyLinkedUnitsHint": "أنشئ أو استورد وحدات الأعمال في الموارد البشرية — تُزامَن تلقائياً مع لوحة التنفيذ عند الحفظ.",
+    "emptyScenarios": "لا توجد سيناريوهات تخطيط لهذه الوحدة بعد.",
+    "emptyScenariosHint": "قم بتهيئة مساحة العمل أو مزامنتها لإنشاء سيناريو أساسي، أو اختر وحدة أعمال أخرى."
   },
   "workspace": {
     "hydrating": "جاري تحميل مساحة التخطيط من الموارد البشرية…",
@@ -1118,7 +1122,6 @@
     "commercialMarginAnalyticsTitle": "تحليلات الهامش",
     "commercialMarginAnalyticsHint": "الهامش الإجمالي يستخدم تكلفة التشغيل المباشرة؛ هامش المساهمة يطرح تكلفة التشغيل المحمّلة كاملة.",
     "commercialGrossMargin": "الهامش الإجمالي",
-    "commercialContributionMargin": "هامش المساهمة",
     "commercialOhShare": "حصة الأعباء من السعر",
     "commercialDirectShare": "حصة التكلفة المباشرة من السعر",
     "commercialMarginWarningsTitle": "تحذيرات الهامش",
@@ -1141,5 +1144,61 @@
     "commercialSensitiveBadge": "عرض المسح ≈ {spread} نقطة هامش مساهمة",
     "commercialCalculatorAdapterTitle": "لقطة حاسبة المبيعات (محول)",
     "commercialCalculatorAdapterHint": "معرفات مستقرة ومعرف النموذج والسيناريو والسعر/الهوامش لمستقبل وحدة حاسبة المبيعات."
+  },
+  "sampleData": {
+    "loadSample": "Load sample data",
+    "clearData": "Clear data",
+    "resetSample": "Reset sample data",
+    "working": "Working…",
+    "packLabel": "Pack: {pack}",
+    "panelDescription": "Deterministic demo pack for this module. Safe to clear before loading real data.",
+    "tenantNote": "HR and service architecture data are scoped to your active organization. Planning workspace is stored locally on this browser.",
+    "confirmLoad": "Load sample data for this module? Existing module data may be replaced.",
+    "confirmClear": "Clear all data for this module? This cannot be undone without reloading samples.",
+    "confirmReset": "Reset sample data? This clears the module and reloads the default demo pack.",
+    "success_load": "Sample data loaded.",
+    "success_clear": "Module data cleared.",
+    "success_reset": "Sample data reset.",
+    "error_unknown": "Something went wrong.",
+    "error_has_active_roles": "Active roles already exist. Use Reset sample data to replace them.",
+    "error_no_business_unit": "No business unit found. Load HR sample data first.",
+    "error_hr_roles_required": "Load HR sample data first (roles are required for service architecture).",
+    "error_seed_failed": "Could not seed demo data.",
+    "error_sync_failed": "Saved locally but server sync failed. Check connection and try Reset.",
+    "error_no_streams": "No revenue streams available. Load workspace sample data first.",
+    "platformTitle": "Platform sample data",
+    "platformDescription": "Load or clear all module demo packs in dependency order (HR → service architecture → planning → wizard → prefs).",
+    "loadAll": "Load all sample data",
+    "clearAll": "Clear all module data",
+    "confirmLoadAll": "Load sample data for every module? This replaces demo data in HR, service architecture, workspace, and wizard stores.",
+    "confirmClearAll": "Clear data for every module? Use Load all sample data afterward to restore the demo pack.",
+    "success_loadAll": "All module sample packs loaded.",
+    "success_clearAll": "All module data cleared.",
+    "modules": {
+      "hrWorkforce": {
+        "title": "HR workforce sample data",
+        "description": "Business units, delivery structure, and benchmark roles with OH settings."
+      },
+      "serviceArchitecture": {
+        "title": "Service architecture sample data",
+        "description": "Service families, tiers, templates, phases, deliverables, and role allocations."
+      },
+      "workspace": {
+        "title": "Planning workspace sample data",
+        "description": "Demo companies, revenue streams, scenarios, and pipeline opportunities."
+      },
+      "salesPlanWizard": {
+        "title": "Sales plan wizard sample data",
+        "description": "Wizard steps seeded from workspace revenue streams."
+      },
+      "commercialPricingPrefs": {
+        "title": "Commercial pricing preferences",
+        "description": "Reset pricing model, scenario, and margin thresholds to defaults."
+      },
+      "serviceCostSimulationPrefs": {
+        "title": "Service cost simulation preferences",
+        "description": "Reset cost assumptions and scenario to defaults."
+      }
+    }
   }
 }

@@ -12,7 +12,7 @@ import { OperationalPlanningPageShell } from "@/components/platform-simplificati
 import { buildDemoForecastSeries } from "@/data/demo-seed";
 import { formatCurrency } from "@/lib/calculations/engine";
 import { buildBuForecastContext } from "@/lib/planning/measures/bu-forecast-context";
-import { activeOperationalUnits } from "@/lib/platform-economics/operational-unit";
+import { useOperationalWorkspace } from "@/hooks/use-operational-workspace";
 import { useWorkspaceStore } from "@/stores/use-workspace-store";
 
 type Row = ReturnType<typeof buildDemoForecastSeries>[number];
@@ -20,10 +20,8 @@ type Row = ReturnType<typeof buildDemoForecastSeries>[number];
 const columnHelper = createColumnHelper<Row>();
 
 export default function ForecastsPage() {
-  const { companies, selectedCompanyId, selectedScenarioId } = useWorkspaceStore();
-  const linked = activeOperationalUnits(companies);
-  const company =
-    linked.find((c) => c.id === selectedCompanyId) ?? linked[0] ?? companies[0];
+  const { selectedUnit: company } = useOperationalWorkspace();
+  const selectedScenarioId = useWorkspaceStore((s) => s.selectedScenarioId);
   const buContext = useMemo(
     () => (company ? buildBuForecastContext(company, selectedScenarioId || null) : null),
     [company, selectedScenarioId]

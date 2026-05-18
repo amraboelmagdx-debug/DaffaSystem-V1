@@ -14,6 +14,13 @@
  * - Retired HR BUs: link removed; company retained with metadata.hrRetiredAt (not deleted)
  */
 
+import type {
+  DemoCompany,
+  DemoOpportunity,
+  DemoRevenueStream,
+  DemoScenario,
+} from "@/types/domain";
+
 export const ECONOMICS_SYNC_SOURCE = "hr_catalog" as const;
 export const ECONOMICS_SYNC_VERSION = 1;
 
@@ -36,69 +43,30 @@ export type EconomicsSyncResult = {
   errors: string[];
 };
 
+/** Summary row for HR-linked operational units (subset of {@link DemoCompany}). */
+export type OperationalUnitProjection = Pick<
+  DemoCompany,
+  | "id"
+  | "name"
+  | "fixedCostsMonthly"
+  | "growthTargetPct"
+  | "marginTargetPct"
+  | "npTargetPct"
+  | "revenueMonthly"
+  | "contributionMarginPct"
+  | "marketSegments"
+> & {
+  hrBusinessUnitId: string | null;
+  hrRetired?: boolean;
+};
+
 export type PlanningWorkspaceClientModel = {
   organizationId: string;
   organizationName: string | null;
   /** HR-linked business units (planning projection). Same rows as `companies`. */
-  operationalUnits: Array<{
-    id: string;
-    name: string;
-    hrBusinessUnitId: string | null;
-    fixedCostsMonthly: number;
-    growthTargetPct: number;
-    marginTargetPct: number;
-    npTargetPct: number;
-    revenueMonthly: number;
-    contributionMarginPct: number;
-    marketSegments: string[];
-    hrRetired?: boolean;
-  }>;
-  companies: Array<{
-    id: string;
-    name: string;
-    hrBusinessUnitId: string | null;
-    fixedCostsMonthly: number;
-    growthTargetPct: number;
-    marginTargetPct: number;
-    npTargetPct: number;
-    revenueMonthly: number;
-    contributionMarginPct: number;
-    marketSegments: string[];
-    hrRetired?: boolean;
-  }>;
-  streams: Array<{
-    id: string;
-    companyId: string;
-    name: string;
-    hrDepartmentId: string | null;
-    serviceTemplateId?: string | null;
-    serviceFamilyId?: string | null;
-    contributionMarginPct: number;
-    revenueWeight: number;
-    avgDealSize: number;
-    growthRatePct: number;
-    conversionRatePct: number;
-    salesCycleDays: number;
-  }>;
-  scenarios: Array<{
-    id: string;
-    companyId: string;
-    name: string;
-    baseline: boolean;
-    npTargetPct: number;
-    revenueMixAdj: number;
-    conversionRateAdj: number;
-    fixedCostAdj: number;
-    growthAdj: number;
-    pipelineWeightAdj: number;
-  }>;
-  opportunities: Array<{
-    id: string;
-    companyId: string;
-    name: string;
-    stage: string;
-    amount: number;
-    probability: number;
-    expectedCloseMonth: string;
-  }>;
+  operationalUnits: OperationalUnitProjection[];
+  companies: DemoCompany[];
+  streams: DemoRevenueStream[];
+  scenarios: DemoScenario[];
+  opportunities: DemoOpportunity[];
 };

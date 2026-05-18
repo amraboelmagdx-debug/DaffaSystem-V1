@@ -1,4 +1,5 @@
 import type {
+  DeliveryPhase,
   ServiceDeliverable,
   ServiceFamily,
   ServiceRoleAllocation,

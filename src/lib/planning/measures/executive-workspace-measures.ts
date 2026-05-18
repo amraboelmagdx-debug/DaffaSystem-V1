@@ -15,13 +15,43 @@ import { coverageRatio, pipelineHealthScore, weightedRevenue } from "@/lib/calcu
 import { MEASURE_CATALOG } from "./measure-catalog";
 import { computeWorkbookPlanningSlice } from "./workbook-planning-slice";
 import type { ExecutiveWorkspaceMeasuresInput, PlanningContext } from "./planning-context";
+import type { FormulaOwner } from "./planning-measure-types";
 import { MEASURE_ID, type MeasureId } from "./measure-ids";
 import type { KpiLineage } from "./measure-lineage";
+import {
+  assertPlanningEvaluationContext,
+  resolveActiveScenario,
+} from "./planning-evaluation-readiness";
+
+export type MeasureLineageOwner =
+  | "calculations-engine"
+  | "workbook-engine"
+  | "pipeline"
+  | "derived"
+  | "sales-plan-build-model";
 
 export type MeasureLineage = {
-  owner: "calculations-engine" | "workbook-engine" | "pipeline" | "derived" | "sales-plan-build-model";
+  owner: MeasureLineageOwner;
   detail: string;
 };
+
+function mapFormulaOwnerToLineageOwner(source: FormulaOwner): MeasureLineageOwner {
+  switch (source) {
+    case "calculations-engine":
+    case "workbook-engine":
+    case "pipeline":
+    case "sales-plan-build-model":
+      return source;
+    case "service-economics":
+    case "deal-economics":
+    case "derived":
+      return "derived";
+    default: {
+      const _exhaustive: never = source;
+      return _exhaustive;
+    }
+  }
+}
 
 export type ExecutiveWorkspaceMeasuresResult = {
   blendedStreamCmPct: number;
@@ -63,7 +93,7 @@ function buildLineageMaps(): {
       calculationPath: meta.calculationPath,
     };
     lineage[meta.id] = {
-      owner: meta.sourceEngine,
+      owner: mapFormulaOwnerToLineageOwner(meta.sourceEngine),
       detail: meta.calculationPath.join(" → "),
     };
   }
@@ -120,6 +150,7 @@ function fillValuesFromEngines(input: {
 export function evaluateExecutiveWorkspaceMeasures(
   input: PlanningContext | ExecutiveWorkspaceMeasuresInput
 ): ExecutiveWorkspaceMeasuresResult {
+  assertPlanningEvaluationContext(input);
   const { company, streams, opportunities, scenarios, activeScenarioId, tierLineOverrides } = input;
 
   const weightedPipeline = opportunities
@@ -161,12 +192,21 @@ export function evaluateExecutiveWorkspaceMeasures(
     );
   }
 
-  const activeScenario =
-    scenarios.find((s) => s.id === activeScenarioId) ?? scenarios[0] ?? ({} as DemoScenario);
+  const activeScenario = resolveActiveScenario(scenarios, activeScenarioId);
+  if (!activeScenario) {
+    throw new Error(
+      "evaluateExecutiveWorkspaceMeasures: invariant failed after assertPlanningEvaluationContext"
+    );
+  }
 
-  const activeEngine = scenarioById[activeScenario.id] ?? baseEngine;
+  const activeEngine = scenarioById[activeScenario.id];
+  if (!activeEngine) {
+    throw new Error(
+      `evaluateExecutiveWorkspaceMeasures: missing engine output for scenario ${activeScenario.id}`
+    );
+  }
 
-  const npTargetForWorkbook = activeScenario?.npTargetPct ?? company.npTargetPct;
+  const npTargetForWorkbook = activeScenario.npTargetPct;
   const workbook = computeWorkbookPlanningSlice({
     streams,
     tierLineOverrides,
@@ -189,11 +229,19 @@ export function evaluateExecutiveWorkspaceMeasures(
     activeEngine.revenue / (company.revenueMonthly * 1.05)
   );
 
-  const scenarioCompare = scenarios.map((sc) => ({
-    name: sc.name,
-    profit: scenarioById[sc.id]!.netProfit,
-    revenue: scenarioById[sc.id]!.revenue,
-  }));
+  const scenarioCompare = scenarios.map((sc) => {
+    const engine = scenarioById[sc.id];
+    if (!engine) {
+      throw new Error(
+        `evaluateExecutiveWorkspaceMeasures: missing engine output for scenario ${sc.id}`
+      );
+    }
+    return {
+      name: sc.name,
+      profit: engine.netProfit,
+      revenue: engine.revenue,
+    };
+  });
 
   const { measureLineageById, lineage } = buildLineageMaps();
   const valuesByMeasureId = fillValuesFromEngines({
