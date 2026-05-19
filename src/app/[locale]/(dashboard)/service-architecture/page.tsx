@@ -1,6 +1,5 @@
-import { ServiceFamiliesView } from "@/components/service-architecture/service-families-view";
+import { LegacyFlatRouteRedirect } from "@/components/operational-workspace/legacy-flat-route-redirect";
 
-export default function ServiceArchitectureFamiliesPage() {
-  return <ServiceFamiliesView />;
+export default function ServiceArchitectureLegacyPage() {
+  return <LegacyFlatRouteRedirect unitSlug="/service-architecture" />;
 }
-

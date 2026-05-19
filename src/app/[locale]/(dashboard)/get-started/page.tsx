@@ -38,7 +38,7 @@ export default function GetStartedPage() {
         return;
       }
       await retryWorkspaceBootstrap();
-      router.push("/");
+      router.push("/holding");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Load failed");
     } finally {
@@ -85,7 +85,7 @@ export default function GetStartedPage() {
 
         <div className="flex flex-col gap-3 sm:flex-row">
           <Button asChild>
-            <Link href="/hr-workforce/import">{t("importHr")}</Link>
+            <Link href="/holding">{t("importHr")}</Link>
           </Button>
           {isSampleDataUxEnabled() ? (
             <Button variant="secondary" disabled={loading} onClick={() => void loadSample()}>
@@ -93,7 +93,7 @@ export default function GetStartedPage() {
             </Button>
           ) : null}
           <Button variant="outline" asChild>
-            <Link href="/">{t("goExecutive")}</Link>
+            <Link href="/holding">{t("goExecutive")}</Link>
           </Button>
         </div>
         {isSampleDataUxEnabled() ? (

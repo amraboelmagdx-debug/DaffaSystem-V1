@@ -1,5 +1,7 @@
-import { CommercialPricingIntelligenceView } from "@/components/service-architecture/commercial-pricing-intelligence-view";
+import { LegacyFlatRouteRedirect } from "@/components/operational-workspace/legacy-flat-route-redirect";
 
-export default function CommercialPricingIntelligencePage() {
-  return <CommercialPricingIntelligenceView />;
+export default function CommercialPricingIntelligenceLegacyPage() {
+  return (
+    <LegacyFlatRouteRedirect unitSlug="/service-architecture/commercial-pricing" />
+  );
 }

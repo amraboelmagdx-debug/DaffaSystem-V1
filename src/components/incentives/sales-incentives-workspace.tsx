@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 
 import { OperationalWorkspaceGate } from "@/components/operational-workspace/operational-workspace-gate";
 import { useOperationalWorkspace } from "@/hooks/use-operational-workspace";
+import { useNavigateUnitCompany } from "@/hooks/use-navigate-unit-company";
 import { useHrWorkforceStore } from "@/stores/use-hr-workforce-store";
 import {
   scenariosForCompany,
@@ -57,7 +58,8 @@ import {
 } from "@/components/incentives/incentives-workspace-layout";
 export function SalesIncentivesWorkspace() {
   const t = useTranslations("incentives");
-  const { selectedUnit: company, linkedUnits, setCompany } = useOperationalWorkspace();
+  const { selectedUnit: company, linkedUnits } = useOperationalWorkspace();
+  const navigateUnitCompany = useNavigateUnitCompany();
   const roles = useHrWorkforceStore((s) => s.roles);
   const opportunities = useWorkspaceStore((s) => s.opportunities);
   const selectedScenarioId = useWorkspaceStore((s) => s.selectedScenarioId);
@@ -432,7 +434,7 @@ export function SalesIncentivesWorkspace() {
       periodYear={periodYear}
       activeSection={activeSection}
       onSectionChange={setActiveSection}
-      onSelectCompany={setCompany}
+      onSelectCompany={navigateUnitCompany}
       onSelectScenario={(id) => useWorkspaceStore.getState().setScenario(id)}
       onRunModeChange={setRunMode}
       onPeriodYearChange={setPeriodYear}

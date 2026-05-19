@@ -9,6 +9,7 @@ import type {
   OhManualSettings,
 } from "@/types/hr-workforce";
 import { newHrId } from "@/lib/hr-workforce/id";
+import { mirrorBuNameToLinkedCompany } from "@/lib/hr-workforce/mirror-bu-name-to-company";
 import { notifyHrStructureChangedDebounced } from "@/lib/platform-economics/notify-hr-structure-changed";
 import type { ImportApplyDeltas } from "@/lib/hr-workforce/import-dry-run";
 import { DEFAULT_OH } from "@/lib/hr-workforce/default-oh";
@@ -264,6 +265,9 @@ export const useHrWorkforceStore = create<HrWorkforceState>()(
             u.id === id ? { ...u, ...patch, updatedAt: t } : u
           ),
         });
+        if (typeof patch.name === "string") {
+          mirrorBuNameToLinkedCompany(id, patch.name);
+        }
         if (patch.isActive !== false) notifyHrStructureChangedDebounced();
       },
 

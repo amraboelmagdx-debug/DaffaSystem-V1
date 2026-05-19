@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { InsightBulb } from "@/components/planning/insight-bulb";
 import { useServiceArchitectureStore } from "@/stores/use-service-architecture-store";
+import { useScopedServiceTemplates } from "@/hooks/use-scoped-service-templates";
 import { useHrWorkforceStore } from "@/stores/use-hr-workforce-store";
 import {
   getJobRolesForTemplateBusinessUnit,
@@ -24,9 +25,15 @@ import {
 export function ServiceRoleAllocationMatrixView() {
   const t = useTranslations("serviceArchitecture");
 
-  const templates = useServiceArchitectureStore((s) => s.serviceTemplates);
+  const allTemplates = useServiceArchitectureStore((s) => s.serviceTemplates);
+  const templates = useScopedServiceTemplates(allTemplates);
+  const scopedTemplateIds = useMemo(() => new Set(templates.map((t) => t.id)), [templates]);
   const tiers = useServiceArchitectureStore((s) => s.serviceTiers);
-  const templateTiers = useServiceArchitectureStore((s) => s.serviceTemplateTiers);
+  const allTemplateTiers = useServiceArchitectureStore((s) => s.serviceTemplateTiers);
+  const templateTiers = useMemo(
+    () => allTemplateTiers.filter((tt) => scopedTemplateIds.has(tt.serviceTemplateId)),
+    [allTemplateTiers, scopedTemplateIds]
+  );
   const phases = useServiceArchitectureStore((s) => s.deliveryPhases);
   const templateTierPhases = useServiceArchitectureStore((s) => s.serviceTemplateTierPhases);
   const allocations = useServiceArchitectureStore((s) => s.serviceRoleAllocations);

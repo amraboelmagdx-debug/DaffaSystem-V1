@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { OperationalWorkspaceGate } from "@/components/operational-workspace/operational-workspace-gate";
+import { useUnitRouteContext } from "@/hooks/use-unit-route-context";
+import { useUnitScope } from "@/hooks/use-unit-scope";
 import type { DemoCompany, DemoScenario } from "@/types/domain";
 import type { IncentiveRunMode } from "@/types/incentives";
 
@@ -65,10 +67,14 @@ export function IncentivesWorkspaceLayout({
   children,
 }: Props) {
   const t = useTranslations("incentives.layout");
+  const { buildHref } = useUnitRouteContext();
+  const { isUnitScoped, unitLabel } = useUnitScope();
+  const salesPlanHref = buildHref("/sales-plan");
+  const hrWorkforceHref = buildHref("/hr-workforce");
 
   return (
     <OperationalWorkspaceGate>
-      <div className="mx-auto max-w-7xl space-y-6">
+      <div className="mx-auto w-full max-w-[1440px] space-y-6 px-4 md:px-8">
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <Link
@@ -87,18 +93,24 @@ export function IncentivesWorkspaceLayout({
         <div className="sticky top-14 z-10 -mx-1 flex flex-wrap items-end gap-3 rounded-lg border border-border/60 bg-card/80 p-3 backdrop-blur-md">
           <div className="space-y-1">
             <Label className="text-xs">{t("businessUnit")}</Label>
-            <Select value={company.id} onValueChange={onSelectCompany}>
-              <SelectTrigger className="h-9 w-[200px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {linkedUnits.map((u) => (
-                  <SelectItem key={u.id} value={u.id}>
-                    {u.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {isUnitScoped ? (
+              <p className="flex h-9 items-center rounded-md border border-border/60 bg-muted/30 px-3 text-sm font-medium">
+                {unitLabel || company.name}
+              </p>
+            ) : (
+              <Select value={company.id} onValueChange={onSelectCompany}>
+                <SelectTrigger className="h-9 w-[200px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {linkedUnits.map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
           <div className="space-y-1">
             <Label className="text-xs">{t("scenario")}</Label>
@@ -157,10 +169,10 @@ export function IncentivesWorkspaceLayout({
             <p className="mt-2 text-sm text-muted-foreground">{t("emptyBody")}</p>
             <div className="mt-4 flex flex-wrap justify-center gap-2">
               <Button variant="outline" size="sm" asChild>
-                <Link href="/sales-plan">{t("emptyCtaPlan")}</Link>
+                <Link href={salesPlanHref}>{t("emptyCtaPlan")}</Link>
               </Button>
               <Button variant="outline" size="sm" asChild>
-                <Link href="/hr-workforce">{t("emptyCtaHr")}</Link>
+                <Link href={hrWorkforceHref}>{t("emptyCtaHr")}</Link>
               </Button>
               <Button size="sm" onClick={onRunSimulation}>
                 {t("runSimulation")}

@@ -22,6 +22,8 @@ import {
   patchOperationalRoleType,
 } from "@/lib/hr-workforce/role-operational-type";
 import { useHrWorkforceStore } from "@/stores/use-hr-workforce-store";
+import { useUnitScope } from "@/hooks/use-unit-scope";
+import { filterBusinessUnitsForBu } from "@/lib/hr-workforce/scope-by-business-unit";
 import type { EmploymentType, JobRole, OperationalRoleType } from "@/types/hr-workforce";
 import { cn } from "@/lib/utils";
 
@@ -51,6 +53,11 @@ export function HrWorkforceOperationalWorkspace() {
   const deleteRole = useHrWorkforceStore((s) => s.deleteRole);
   const bulkDeleteRoles = useHrWorkforceStore((s) => s.bulkDeleteRoles);
   const bulkPatchRoles = useHrWorkforceStore((s) => s.bulkPatchRoles);
+  const { isUnitScoped, hrBusinessUnitId } = useUnitScope();
+  const visibleBusinessUnits = useMemo(
+    () => filterBusinessUnitsForBu(businessUnits, isUnitScoped ? hrBusinessUnitId : null),
+    [businessUnits, isUnitScoped, hrBusinessUnitId]
+  );
 
   const [q, setQ] = useState("");
   const [buFilter, setBuFilter] = useState<string>("all");
@@ -80,6 +87,12 @@ export function HrWorkforceOperationalWorkspace() {
   useEffect(() => {
     if (!useTeamLevel) setTeamFilter("all");
   }, [useTeamLevel]);
+
+  useEffect(() => {
+    if (isUnitScoped && hrBusinessUnitId) {
+      setBuFilter(hrBusinessUnitId);
+    }
+  }, [isUnitScoped, hrBusinessUnitId]);
 
   const filtered = useMemo(() => {
     return roles.filter((r) => {
@@ -230,7 +243,7 @@ export function HrWorkforceOperationalWorkspace() {
         </div>
         <Card className="border-border/60 bg-card/50">
           <CardContent className="max-h-[70vh] space-y-1 overflow-y-auto p-2 text-sm">
-            {businessUnits.map((bu) => {
+            {visibleBusinessUnits.map((bu) => {
               const depts = departments.filter((d) => d.businessUnitId === bu.id);
               const buOpen = openBu.has(bu.id);
               const buHc = roles
@@ -385,6 +398,7 @@ export function HrWorkforceOperationalWorkspace() {
 
         <Card className="border-border/60 bg-card/40">
           <CardContent className="flex flex-col gap-3 pt-4 md:flex-row md:flex-wrap md:items-end">
+            {!isUnitScoped ? (
             <div className="space-y-1">
               <span className="text-xs text-muted-foreground">{t("filterBU")}</span>
               <Select
@@ -400,7 +414,7 @@ export function HrWorkforceOperationalWorkspace() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">{t("allUnits")}</SelectItem>
-                  {businessUnits.map((b) => (
+                  {visibleBusinessUnits.map((b) => (
                     <SelectItem key={b.id} value={b.id}>
                       {b.name}
                     </SelectItem>
@@ -408,6 +422,7 @@ export function HrWorkforceOperationalWorkspace() {
                 </SelectContent>
               </Select>
             </div>
+            ) : null}
             <div className="space-y-1">
               <span className="text-xs text-muted-foreground">{t("filterDept")}</span>
               <Select value={deptFilter} onValueChange={(v) => { setDeptFilter(v); setTeamFilter("all"); }}>

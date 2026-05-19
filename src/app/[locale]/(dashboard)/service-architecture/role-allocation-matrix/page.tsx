@@ -1,6 +1,7 @@
-import { ServiceRoleAllocationMatrixView } from "@/components/service-architecture/service-role-allocation-matrix-view";
+import { LegacyFlatRouteRedirect } from "@/components/operational-workspace/legacy-flat-route-redirect";
 
-export default function ServiceArchitectureRoleAllocationMatrixPage() {
-  return <ServiceRoleAllocationMatrixView />;
+export default function ServiceArchitectureRoleAllocationMatrixLegacyPage() {
+  return (
+    <LegacyFlatRouteRedirect unitSlug="/service-architecture/role-allocation-matrix" />
+  );
 }
-

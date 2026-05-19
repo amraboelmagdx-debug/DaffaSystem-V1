@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
-import { Link } from "@/i18n/navigation";
-import { Building2, RefreshCw } from "lucide-react";
+import { Link, useRouter } from "@/i18n/navigation";
+import { Building2, Plus, RefreshCw } from "lucide-react";
+import { AddBusinessUnitDialog } from "@/components/holding/add-business-unit-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +20,7 @@ export function OperationalUnitPicker() {
   const t = useTranslations("holding.operationalPicker");
   const tHolding = useTranslations("holding");
   const locale = useLocale();
+  const router = useRouter();
   const { organizationName } = useTenantPersistenceContext();
   const {
     linkedUnits,
@@ -27,6 +29,7 @@ export function OperationalUnitPicker() {
     retryWorkspaceBootstrap,
     bootstrapError,
   } = useOperationalWorkspace();
+  const [addOpen, setAddOpen] = useState(false);
   const companies = useWorkspaceStore((s) => s.companies);
   const streams = useWorkspaceStore((s) => s.streams);
   const opportunities = useWorkspaceStore((s) => s.opportunities);
@@ -80,8 +83,9 @@ export function OperationalUnitPicker() {
             <p className="text-xs text-destructive">{bootstrapError}</p>
           ) : null}
           <div className="flex flex-wrap justify-center gap-2">
-            <Button size="sm" asChild>
-              <Link href="/hr-workforce/settings">{tHolding("addUnit")}</Link>
+            <Button size="sm" className="gap-1" onClick={() => setAddOpen(true)}>
+              <Plus className="h-3.5 w-3.5" />
+              {tHolding("addUnit")}
             </Button>
             {hrActiveBuCount > 0 ? (
               <Button
@@ -96,6 +100,7 @@ export function OperationalUnitPicker() {
             ) : null}
           </div>
         </CardContent>
+        <AddBusinessUnitDialog open={addOpen} onOpenChange={setAddOpen} />
       </Card>
     );
   }
@@ -144,7 +149,14 @@ export function OperationalUnitPicker() {
                   <p className="font-medium tabular-nums">{row.headcount}</p>
                 </div>
               </div>
-              <Button className="w-full" size="sm" onClick={() => setCompany(row.companyId)}>
+              <Button
+                className="w-full"
+                size="sm"
+                onClick={() => {
+                  setCompany(row.companyId);
+                  router.push(`/unit/${row.companyId}`);
+                }}
+              >
                 {t("workInUnit")}
               </Button>
             </CardContent>
@@ -155,10 +167,17 @@ export function OperationalUnitPicker() {
         <Button variant="outline" size="sm" asChild>
           <Link href="/holding">{t("viewHolding")}</Link>
         </Button>
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/hr-workforce/settings">{tHolding("addUnit")}</Link>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="gap-1"
+          onClick={() => setAddOpen(true)}
+        >
+          <Plus className="h-3.5 w-3.5" />
+          {tHolding("addUnit")}
         </Button>
       </div>
+      <AddBusinessUnitDialog open={addOpen} onOpenChange={setAddOpen} />
     </div>
   );
 }

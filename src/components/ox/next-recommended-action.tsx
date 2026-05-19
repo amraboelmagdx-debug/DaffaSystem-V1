@@ -7,11 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getNextRecommendedAction } from "@/lib/ox/next-recommended-action";
 import { useWorkflowProgressInput } from "@/hooks/use-workflow-progress";
+import { useUnitRouteContext } from "@/hooks/use-unit-route-context";
 
 export function NextRecommendedAction() {
   const t = useTranslations("ox");
   const input = useWorkflowProgressInput();
   const action = getNextRecommendedAction(input);
+  const { buildHref } = useUnitRouteContext();
+  const href = buildHref(action.href);
 
   return (
     <Card className="border-primary/20 bg-primary/5">
@@ -24,7 +27,7 @@ export function NextRecommendedAction() {
           <p className="text-sm text-muted-foreground">{t(action.descriptionKey)}</p>
         </div>
         <Button asChild variant={action.variant === "primary" ? "default" : "outline"}>
-          <Link href={action.href} className="gap-2">
+          <Link href={href} className="gap-2">
             {t(action.labelKey)}
             <ArrowRight className="h-4 w-4" />
           </Link>

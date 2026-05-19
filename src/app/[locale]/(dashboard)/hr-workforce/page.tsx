@@ -1,5 +1,5 @@
-import { HrWorkforceDashboardView } from "@/components/hr-workforce/hr-workforce-dashboard-view";
+import { LegacyFlatRouteRedirect } from "@/components/operational-workspace/legacy-flat-route-redirect";
 
-export default function HrWorkforceOverviewPage() {
-  return <HrWorkforceDashboardView />;
+export default function HrWorkforceLegacyPage() {
+  return <LegacyFlatRouteRedirect unitSlug="/hr-workforce" />;
 }

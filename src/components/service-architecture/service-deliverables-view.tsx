@@ -13,14 +13,25 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useServiceArchitectureStore } from "@/stores/use-service-architecture-store";
+import { useScopedServiceTemplates } from "@/hooks/use-scoped-service-templates";
 
 export function ServiceDeliverablesView() {
   const t = useTranslations("serviceArchitecture");
-  const templates = useServiceArchitectureStore((s) => s.serviceTemplates);
+  const allTemplates = useServiceArchitectureStore((s) => s.serviceTemplates);
+  const templates = useScopedServiceTemplates(allTemplates);
+  const scopedTemplateIds = useMemo(() => new Set(templates.map((t) => t.id)), [templates]);
   const tiers = useServiceArchitectureStore((s) => s.serviceTiers);
-  const templateTiers = useServiceArchitectureStore((s) => s.serviceTemplateTiers);
+  const allTemplateTiers = useServiceArchitectureStore((s) => s.serviceTemplateTiers);
+  const templateTiers = useMemo(
+    () => allTemplateTiers.filter((tt) => scopedTemplateIds.has(tt.serviceTemplateId)),
+    [allTemplateTiers, scopedTemplateIds]
+  );
   const phases = useServiceArchitectureStore((s) => s.deliveryPhases);
-  const templateTierPhases = useServiceArchitectureStore((s) => s.serviceTemplateTierPhases);
+  const allTemplateTierPhases = useServiceArchitectureStore((s) => s.serviceTemplateTierPhases);
+  const templateTierPhases = useMemo(() => {
+    const tierIds = new Set(templateTiers.map((tt) => tt.id));
+    return allTemplateTierPhases.filter((ttp) => tierIds.has(ttp.serviceTemplateTierId));
+  }, [allTemplateTierPhases, templateTiers]);
   const deliverables = useServiceArchitectureStore((s) => s.serviceDeliverables);
   const addServiceDeliverable = useServiceArchitectureStore((s) => s.addServiceDeliverable);
 
@@ -43,9 +54,16 @@ export function ServiceDeliverablesView() {
     [templateTierPhases, templateTiers, templates, tiers, phases]
   );
 
+  const scopedPhaseIds = useMemo(
+    () => new Set(templateTierPhases.map((ttp) => ttp.id)),
+    [templateTierPhases]
+  );
+
   const rows = useMemo(
     () =>
-      deliverables.map((deliverable) => {
+      deliverables
+        .filter((d) => scopedPhaseIds.has(d.serviceTemplateTierPhaseId))
+        .map((deliverable) => {
         const ttp = templateTierPhases.find((it) => it.id === deliverable.serviceTemplateTierPhaseId);
         const tt = templateTiers.find((it) => it.id === ttp?.serviceTemplateTierId);
         const template = templates.find((it) => it.id === tt?.serviceTemplateId);
@@ -58,7 +76,7 @@ export function ServiceDeliverablesView() {
           phaseName: phase?.name ?? "—",
         };
       }),
-    [deliverables, templateTierPhases, templateTiers, templates, tiers, phases]
+    [deliverables, scopedPhaseIds, templateTierPhases, templateTiers, templates, tiers, phases]
   );
 
   return (

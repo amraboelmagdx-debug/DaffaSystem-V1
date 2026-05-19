@@ -1,6 +1,7 @@
-import { ServiceDeliverablesView } from "@/components/service-architecture/service-deliverables-view";
+import { LegacyFlatRouteRedirect } from "@/components/operational-workspace/legacy-flat-route-redirect";
 
-export default function ServiceArchitectureDeliverablesPage() {
-  return <ServiceDeliverablesView />;
+export default function ServiceArchitectureDeliverablesLegacyPage() {
+  return (
+    <LegacyFlatRouteRedirect unitSlug="/service-architecture/deliverables" />
+  );
 }
-

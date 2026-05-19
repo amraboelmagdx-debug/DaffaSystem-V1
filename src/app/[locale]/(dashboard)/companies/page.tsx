@@ -11,7 +11,7 @@ export default function CompaniesRedirectPage() {
   const [shown] = useState(true);
 
   useEffect(() => {
-    const id = window.setTimeout(() => router.replace("/sales-plan"), 1200);
+    const id = window.setTimeout(() => router.replace("/holding"), 1200);
     return () => window.clearTimeout(id);
   }, [router]);
 

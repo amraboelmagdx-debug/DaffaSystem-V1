@@ -1,5 +1,5 @@
-import { HrWorkforceOperationalWorkspace } from "@/components/hr-workforce/hr-workforce-operational-workspace";
+import { LegacyFlatRouteRedirect } from "@/components/operational-workspace/legacy-flat-route-redirect";
 
-export default function HrWorkforceRolesPage() {
-  return <HrWorkforceOperationalWorkspace />;
+export default function HrWorkforceRolesLegacyPage() {
+  return <LegacyFlatRouteRedirect unitSlug="/hr-workforce/roles" />;
 }

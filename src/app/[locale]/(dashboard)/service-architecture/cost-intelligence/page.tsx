@@ -1,5 +1,7 @@
-import { ServiceCostIntelligenceView } from "@/components/service-architecture/service-cost-intelligence-view";
+import { LegacyFlatRouteRedirect } from "@/components/operational-workspace/legacy-flat-route-redirect";
 
-export default function ServiceCostIntelligencePage() {
-  return <ServiceCostIntelligenceView />;
+export default function ServiceCostIntelligenceLegacyPage() {
+  return (
+    <LegacyFlatRouteRedirect unitSlug="/service-architecture/cost-intelligence" />
+  );
 }

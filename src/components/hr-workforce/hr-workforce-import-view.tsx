@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
+import { useUnitScope } from "@/hooks/use-unit-scope";
+import { useHrWorkforceStore } from "@/stores/use-hr-workforce-store";
 import { useTenantPersistenceContext } from "@/components/providers/tenant-persistence-context";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,8 +26,6 @@ import { bootstrapOperationalWorkspaceFromHr } from "@/lib/platform-economics/bo
 import { flushHrCatalogSync } from "@/lib/persistence/hr-catalog-dual-write";
 import { writeHrCatalogLocalPersistSnapshot } from "@/lib/persistence/hr-catalog-local-persist";
 import { getActiveOrganizationId } from "@/lib/persistence/active-tenant";
-import { useHrWorkforceStore } from "@/stores/use-hr-workforce-store";
-
 const COLUMN_KEYS: ImportColumnKey[] = [
   "holding",
   "businessUnit",
@@ -43,9 +43,15 @@ const COLUMN_KEYS: ImportColumnKey[] = [
   "additionalCosts",
 ];
 
+function ciKey(s: string): string {
+  return s.trim().toLowerCase();
+}
+
 export function HrWorkforceImportView() {
   const t = useTranslations("hrWorkforce");
   const { organizationName } = useTenantPersistenceContext();
+  const { isUnitScoped, hrBusinessUnitId } = useUnitScope();
+  const businessUnits = useHrWorkforceStore((s) => s.businessUnits);
 
   useEffect(() => {
     useHrWorkforceStore.setState({ importSessionTenantOrganizationName: organizationName });
@@ -70,6 +76,27 @@ export function HrWorkforceImportView() {
   const errors = useHrWorkforceStore((s) => s.importSessionErrors);
   const plan = useHrWorkforceStore((s) => s.importSessionPlan);
 
+  const scopedBuName = useMemo(
+    () => businessUnits.find((b) => b.id === hrBusinessUnitId)?.name ?? "",
+    [businessUnits, hrBusinessUnitId]
+  );
+
+  const importBlocksOtherBus = useMemo(() => {
+    if (!isUnitScoped || !hrBusinessUnitId || !plan?.ok || !scopedBuName) return false;
+    const allowed = ciKey(scopedBuName);
+    if (plan.preview.newBusinessUnits > 0) return true;
+    for (const bu of plan.deltas.businessUnits) {
+      if (ciKey(bu.name) !== allowed) return true;
+    }
+    const buNames = new Map(businessUnits.map((b) => [b.id, b.name]));
+    for (const bu of plan.deltas.businessUnits) buNames.set(bu.id, bu.name);
+    for (const role of plan.deltas.roles) {
+      const name = buNames.get(role.businessUnitId);
+      if (name && ciKey(name) !== allowed) return true;
+    }
+    return false;
+  }, [isUnitScoped, hrBusinessUnitId, plan, scopedBuName, businessUnits]);
+
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
@@ -88,7 +115,7 @@ export function HrWorkforceImportView() {
   };
 
   const commit = async () => {
-    if (!plan?.ok) return;
+    if (!plan?.ok || importBlocksOtherBus) return;
     applyImportDeltas(plan.deltas, { replace: importSessionReplaceExisting });
     const orgId = getActiveOrganizationId();
     if (orgId) {
@@ -237,10 +264,24 @@ export function HrWorkforceImportView() {
         <Button type="button" variant="secondary" disabled={!rows.length} onClick={runDryRun}>
           {t("dryRun")}
         </Button>
-        <Button type="button" disabled={!plan?.ok} onClick={() => void commit()}>
+        <Button
+          type="button"
+          disabled={!plan?.ok || importBlocksOtherBus}
+          onClick={() => void commit()}
+        >
           {t("importCommit")}
         </Button>
       </div>
+
+      {importBlocksOtherBus ? (
+        <Card className="border-destructive/40 bg-destructive/5">
+          <CardContent className="pt-6 text-sm text-destructive">
+            {t("importScopedBlocked")}
+          </CardContent>
+        </Card>
+      ) : isUnitScoped && plan?.ok ? (
+        <p className="text-xs text-muted-foreground">{t("importScopedUnitNote")}</p>
+      ) : null}
 
       {errors.length > 0 && (
         <Card className="border-destructive/40 bg-destructive/5">

@@ -722,6 +722,31 @@
       "activeScenarioLabel": "Active scenario",
       "scenarioReadOnly": "Active scenario is locked or archived — save and apply are disabled."
     },
+    "commandBar": {
+      "scenario": "Scenario",
+      "save": "Save",
+      "saveAs": "Save as",
+      "saveAsPrompt": "Name for the new scenario branch",
+      "saveAsConfirm": "Create and save",
+      "cancel": "Cancel",
+      "apply": "Apply draft",
+      "compare": "Compare scenarios",
+      "compareExecutive": "Compare in Executive",
+      "defaultSaveAsName": "New scenario",
+      "copySuffix": "copy",
+      "scenarioReadOnly": "Active scenario is locked or archived — save and apply are disabled.",
+      "moreTools": "More tools"
+    },
+    "rail": {
+      "label": "Scenario branches",
+      "newScenario": "New scenario",
+      "newScenarioTitle": "Create or duplicate scenario",
+      "empty": "No scenarios for this unit yet."
+    },
+    "contextPanel": {
+      "metadataTitle": "Active scenario",
+      "noScenario": "Select or create a scenario to see details."
+    },
     "title": "Revenue planning operating system",
     "badge": "Guided workflow",
     "subtitle": "Build a complete sales plan from portfolio definition through opportunity tiers, fixed costs, services, margins, break-even, funnel math, awards (with minimum-deal logic), and quarterly execution — incrementally aligned with your workbook engine.",
@@ -1282,6 +1307,10 @@
     "syncPlanningFromHr": "Sync to planning",
     "buNamePh": "Unit name",
     "addBU": "Add business unit",
+    "addBuOnHoldingHint": "To add another business unit, return to the holding board.",
+    "importScopedWarning": "This import includes rows for other business units. Only data for the current unit can be committed here.",
+    "importScopedBlocked": "Commit blocked: import targets other business units. Use the holding-level HR import or restrict the file to this unit.",
+    "importScopedUnitNote": "Imports apply to this business unit only. Rows for other units are blocked on commit.",
     "addBuFieldLabel": "New unit name",
     "addingBu": "Adding…",
     "addBuFailed": "Could not save the new unit to the server. Your local list is kept — try Sync to planning again.",
@@ -1781,8 +1810,50 @@
     "emptyUnits": "Link HR business units to the planning workspace to see the holding board.",
     "emptyUnitsPendingSync": "HR units exist but are not linked to planning yet. Sync to show them on the board.",
     "addUnit": "Add business unit",
+    "addUnitHint": "Start a new operational unit under this holding.",
     "importUnits": "Import from Excel",
     "syncToPlanning": "Sync to planning",
+    "kpiStrip": {
+      "units": "Business units",
+      "revenue": "Total revenue (mo.)",
+      "netProfit": "Total net profit (mo.)",
+      "headcount": "Total headcount"
+    },
+    "addBu": {
+      "title": "Add business unit",
+      "body": "Create a new business unit under this holding. You can fill in HR details, services, and pricing inside the unit afterwards.",
+      "nameLabel": "Unit name",
+      "namePlaceholder": "e.g. Creative Studio",
+      "codeLabel": "Code (optional)",
+      "codePlaceholder": "e.g. CS",
+      "cancel": "Cancel",
+      "create": "Create unit",
+      "creating": "Creating…"
+    },
+    "deleteBu": {
+      "title": "Delete business unit?",
+      "body": "Delete \"{name}\" and ALL its departments, teams, roles, and linked planning data? This cannot be undone.",
+      "cancel": "Cancel",
+      "confirm": "Delete unit",
+      "deleting": "Deleting…",
+      "deleteAria": "Delete business unit",
+      "cannotDeleteLast": "At least one business unit must remain.",
+      "failed": "Could not delete the business unit. Try again or sync from HR."
+    },
+    "renameBu": {
+      "title": "Rename business unit",
+      "body": "Update the display name and optional code. The change applies across HR, the holding board, unit switcher, and planning.",
+      "nameLabel": "Unit name",
+      "namePlaceholder": "e.g. Creative Studio",
+      "codeLabel": "Code (optional)",
+      "codePlaceholder": "e.g. CS",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saving": "Saving…",
+      "renameAria": "Rename business unit",
+      "nameRequired": "Unit name is required.",
+      "failed": "Could not rename the business unit. Try again or sync from HR."
+    },
     "buGate": {
       "title": "Select a business unit",
       "body": "Operational modules require one active business unit. Open the holding board or pick a unit from the header switcher.",
@@ -1832,6 +1903,12 @@
         "incentives": "Design and simulate compensation."
       }
     }
+  },
+  "unitScope": {
+    "workingIn": "Working in:",
+    "viewHolding": "Holding board",
+    "holdingOnlyAddBu": "Add new business units from the holding board.",
+    "crossBuOnHolding": "Cross-unit comparisons and portfolio analytics live on the holding board."
   },
   "incentives": {
     "title": "Sales team incentives",

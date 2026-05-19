@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { Moon, PanelLeftClose, PanelLeftOpen, Search, Sun } from "lucide-react";
-import { CanonicalSidebarNav } from "@/components/layout/canonical-sidebar-nav";
+import { SidebarNavRouter } from "@/components/layout/sidebar-nav-router";
 import { useTheme } from "next-themes";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -51,7 +51,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           )}
         </div>
         <ScrollArea className="flex-1 px-2 py-3">
-          <CanonicalSidebarNav collapsed={sidebarCollapsed} />
+          <SidebarNavRouter collapsed={sidebarCollapsed} />
         </ScrollArea>
         <div className="border-t border-border/60 p-2">
           <Button

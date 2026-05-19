@@ -1,5 +1,5 @@
-import { HrWorkforceIntelligenceView } from "@/components/hr-workforce/hr-workforce-intelligence-view";
+import { LegacyFlatRouteRedirect } from "@/components/operational-workspace/legacy-flat-route-redirect";
 
-export default function HrWorkforceIntelligencePage() {
-  return <HrWorkforceIntelligenceView />;
+export default function HrWorkforceIntelligenceLegacyPage() {
+  return <LegacyFlatRouteRedirect unitSlug="/hr-workforce/intelligence" />;
 }

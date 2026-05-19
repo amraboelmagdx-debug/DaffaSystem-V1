@@ -16,10 +16,15 @@ import { Link } from "@/i18n/navigation";
 import { useServiceArchitectureStore } from "@/stores/use-service-architecture-store";
 import { useActiveHrBusinessUnits } from "@/hooks/use-active-hr-business-units";
 import { useOperationalWorkspace } from "@/hooks/use-operational-workspace";
+import { useUnitRouteContext } from "@/hooks/use-unit-route-context";
+import { useUnitScope } from "@/hooks/use-unit-scope";
 import { ServiceTemplateOpportunityTiers } from "@/components/service-architecture/service-template-opportunity-tiers";
 
 export function ServiceTemplatesView() {
   const t = useTranslations("serviceArchitecture");
+  const { buildHref } = useUnitRouteContext();
+  const { isUnitScoped, hrBusinessUnitId, unitLabel } = useUnitScope();
+  const hrWorkforceHref = buildHref("/hr-workforce");
   const families = useServiceArchitectureStore((s) => s.serviceFamilies);
   const tiers = useServiceArchitectureStore((s) => s.serviceTiers);
   const templates = useServiceArchitectureStore((s) => s.serviceTemplates);
@@ -29,7 +34,11 @@ export function ServiceTemplatesView() {
 
   const businessUnits = useActiveHrBusinessUnits();
   const { selectedUnit } = useOperationalWorkspace();
-  const workspaceBuId = selectedUnit?.hrBusinessUnitId ?? businessUnits[0]?.id ?? "";
+  const workspaceBuId =
+    (isUnitScoped && hrBusinessUnitId) ||
+    selectedUnit?.hrBusinessUnitId ||
+    businessUnits[0]?.id ||
+    "";
 
   const scopedTemplates = useMemo(() => {
     if (!workspaceBuId) return templates;
@@ -38,6 +47,10 @@ export function ServiceTemplatesView() {
 
   const [familyId, setFamilyId] = useState("");
   const [businessUnitId, setBusinessUnitId] = useState(workspaceBuId);
+
+  useEffect(() => {
+    if (workspaceBuId) setBusinessUnitId(workspaceBuId);
+  }, [workspaceBuId]);
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
@@ -81,7 +94,10 @@ export function ServiceTemplatesView() {
             {businessUnits.length === 0 ? (
               <p className="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-muted-foreground">
                 {t("buEmptyFromHrHint")}{" "}
-                <Link href="/hr-workforce" className="font-medium text-foreground underline underline-offset-2">
+                <Link
+                  href={hrWorkforceHref}
+                  className="font-medium text-foreground underline underline-offset-2"
+                >
                   {t("buOpenHrWorkforce")}
                 </Link>
                 .
@@ -103,18 +119,30 @@ export function ServiceTemplatesView() {
             </Select>
             <div className="space-y-1">
               <p className="text-xs font-medium text-foreground">{t("buSelectLabel")}</p>
-              <Select value={businessUnitId} onValueChange={setBusinessUnitId} disabled={businessUnits.length === 0}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t("selectBusinessUnit")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {businessUnits.map((bu) => (
-                    <SelectItem key={bu.id} value={bu.id}>
-                      {bu.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {isUnitScoped ? (
+                <p className="rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-sm font-medium">
+                  {unitLabel ||
+                    businessUnits.find((b) => b.id === businessUnitId)?.name ||
+                    "—"}
+                </p>
+              ) : (
+                <Select
+                  value={businessUnitId}
+                  onValueChange={setBusinessUnitId}
+                  disabled={businessUnits.length === 0}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("selectBusinessUnit")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {businessUnits.map((bu) => (
+                      <SelectItem key={bu.id} value={bu.id}>
+                        {bu.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("templateNamePlaceholder")} />
             <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder={t("templateCodePlaceholder")} />

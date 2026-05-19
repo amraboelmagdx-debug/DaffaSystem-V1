@@ -29,6 +29,7 @@ import { Badge } from "@/components/ui/badge";
 import { SampleDataPanel } from "@/components/sample-data/sample-data-panel";
 import { TransitionalArchitectureBanner } from "@/components/platform-simplification/transitional-architecture-banner";
 import { useOperationalWorkspace } from "@/hooks/use-operational-workspace";
+import { useUnitScope } from "@/hooks/use-unit-scope";
 import { useWave0DevWarnings } from "@/hooks/use-wave0-dev-warnings";
 
 export function ServiceCostIntelligenceView() {
@@ -55,15 +56,16 @@ export function ServiceCostIntelligenceView() {
 
   const catalog = useServiceCostCatalogSlice();
   const { selectedUnit } = useOperationalWorkspace();
+  const { isUnitScoped, hrBusinessUnitId } = useUnitScope();
   const scopedCompanies = useMemo(
     () => (selectedUnit ? [selectedUnit] : []),
     [selectedUnit]
   );
-  const scopedBusinessUnitIds = useMemo(
-    () =>
-      selectedUnit?.hrBusinessUnitId ? [selectedUnit.hrBusinessUnitId] : businessUnits.map((b) => b.id),
-    [selectedUnit, businessUnits]
-  );
+  const scopedBusinessUnitIds = useMemo(() => {
+    if (isUnitScoped && hrBusinessUnitId) return [hrBusinessUnitId];
+    if (selectedUnit?.hrBusinessUnitId) return [selectedUnit.hrBusinessUnitId];
+    return businessUnits.map((b) => b.id);
+  }, [isUnitScoped, hrBusinessUnitId, selectedUnit, businessUnits]);
 
   const [templateId, setTemplateId] = useState("");
   const [tierId, setTierId] = useState("");

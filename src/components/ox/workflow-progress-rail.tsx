@@ -4,11 +4,13 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { WORKFLOW_STEPS } from "@/lib/ox/workflow-steps";
 import { useWorkflowProgress } from "@/hooks/use-workflow-progress";
+import { useUnitRouteContext } from "@/hooks/use-unit-route-context";
 import { cn } from "@/lib/utils";
 
 export function WorkflowProgressRail({ compact }: { compact?: boolean }) {
   const t = useTranslations("ox");
   const { stepStatus } = useWorkflowProgress();
+  const { buildHref } = useUnitRouteContext();
 
   if (compact) {
     const completedCount = WORKFLOW_STEPS.filter((s) => stepStatus(s.id) === "complete").length;
@@ -29,7 +31,7 @@ export function WorkflowProgressRail({ compact }: { compact?: boolean }) {
         return (
           <Link
             key={step.id}
-            href={step.href}
+            href={buildHref(step.href)}
             className={cn(
               "flex min-w-[4.5rem] flex-col items-center gap-1 rounded-lg px-2 py-1.5 text-center transition-colors",
               status === "complete" && "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",

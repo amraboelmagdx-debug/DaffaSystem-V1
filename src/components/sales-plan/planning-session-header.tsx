@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { OperationalBuToolbar } from "@/components/operational-workspace/operational-bu-toolbar";
+import { UnitContextBanner } from "@/components/operational-workspace/unit-context-banner";
 import { ScenarioAuthoringControls } from "@/components/sales-plan/scenario-authoring-controls";
 import { Button } from "@/components/ui/button";
 import {
@@ -71,7 +72,9 @@ export function PlanningSessionHeader({
       </div>
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div className="flex flex-wrap items-end gap-4">
+        <div className="flex flex-col gap-3">
+          <UnitContextBanner showHoldingLink={false} />
+          <div className="flex flex-wrap items-end gap-4">
           <OperationalBuToolbar />
           {companyId ? (
             <div className="flex flex-col gap-1">
@@ -100,6 +103,7 @@ export function PlanningSessionHeader({
               </Select>
             </div>
           ) : null}
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-2">

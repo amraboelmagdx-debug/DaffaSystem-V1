@@ -2,6 +2,8 @@
 
 import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import { useUnitRouteContext } from "@/hooks/use-unit-route-context";
+import { useUnitScope } from "@/hooks/use-unit-scope";
 import {
   Area,
   AreaChart,
@@ -94,6 +96,9 @@ export function ExecutiveDashboardContent({
   const ts = useTranslations("planning.scenarios");
   const locale = useLocale();
   const fmt = (n: number) => formatCurrencyLocale(n, locale);
+  const { buildHref } = useUnitRouteContext();
+  const { isUnitScoped, unitLabel } = useUnitScope();
+  const salesPlanHref = buildHref("/sales-plan");
 
   const { baseEngine, activeEngine: scenarioEngine, workbook, pipeline, scenarioCompare } =
     measures;
@@ -129,18 +134,24 @@ export function ExecutiveDashboardContent({
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex flex-col gap-1">
             <span className="text-[11px] uppercase text-muted-foreground">{t("company")}</span>
-            <Select value={company.id} onValueChange={onSelectCompany}>
-              <SelectTrigger className="w-[220px]">
-                <SelectValue placeholder={t("company")} />
-              </SelectTrigger>
-              <SelectContent>
-                {linkedUnits.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {isUnitScoped ? (
+              <span className="flex h-9 items-center rounded-md border border-border/60 bg-muted/30 px-3 text-sm font-medium">
+                {unitLabel || company.name}
+              </span>
+            ) : (
+              <Select value={company.id} onValueChange={onSelectCompany}>
+                <SelectTrigger className="w-[220px]">
+                  <SelectValue placeholder={t("company")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {linkedUnits.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
           <div className="flex flex-col gap-1">
             <span className="text-[11px] uppercase text-muted-foreground">{t("scenario")}</span>
@@ -166,7 +177,10 @@ export function ExecutiveDashboardContent({
 
       <p className="rounded-lg border border-border/60 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
         {t("scenariosMonitorHint")}{" "}
-        <Link href="/sales-plan" className="font-medium text-primary underline">
+        <Link
+          href={salesPlanHref}
+          className="font-medium text-primary underline"
+        >
           {t("scenariosAuthorInSalesPlan")}
         </Link>
       </p>

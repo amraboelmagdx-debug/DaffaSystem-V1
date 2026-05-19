@@ -1,6 +1,5 @@
-import { ServicePhasesView } from "@/components/service-architecture/service-phases-view";
+import { LegacyFlatRouteRedirect } from "@/components/operational-workspace/legacy-flat-route-redirect";
 
-export default function ServiceArchitecturePhasesPage() {
-  return <ServicePhasesView />;
+export default function ServiceArchitecturePhasesLegacyPage() {
+  return <LegacyFlatRouteRedirect unitSlug="/service-architecture/phases" />;
 }
-

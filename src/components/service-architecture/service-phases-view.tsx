@@ -13,15 +13,22 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useServiceArchitectureStore } from "@/stores/use-service-architecture-store";
+import { useScopedServiceTemplates } from "@/hooks/use-scoped-service-templates";
 import { getTemplateTierPhasesOrdered } from "@/lib/service-architecture/selectors";
 
 export function ServicePhasesView() {
   const t = useTranslations("serviceArchitecture");
 
   const phases = useServiceArchitectureStore((s) => s.deliveryPhases);
-  const templates = useServiceArchitectureStore((s) => s.serviceTemplates);
+  const allTemplates = useServiceArchitectureStore((s) => s.serviceTemplates);
+  const templates = useScopedServiceTemplates(allTemplates);
+  const scopedTemplateIds = useMemo(() => new Set(templates.map((t) => t.id)), [templates]);
   const tiers = useServiceArchitectureStore((s) => s.serviceTiers);
-  const templateTiers = useServiceArchitectureStore((s) => s.serviceTemplateTiers);
+  const allTemplateTiers = useServiceArchitectureStore((s) => s.serviceTemplateTiers);
+  const templateTiers = useMemo(
+    () => allTemplateTiers.filter((tt) => scopedTemplateIds.has(tt.serviceTemplateId)),
+    [allTemplateTiers, scopedTemplateIds]
+  );
   const templateTierPhases = useServiceArchitectureStore((s) => s.serviceTemplateTierPhases);
   const addDeliveryPhase = useServiceArchitectureStore((s) => s.addDeliveryPhase);
   const addServiceTemplateTierPhase = useServiceArchitectureStore((s) => s.addServiceTemplateTierPhase);

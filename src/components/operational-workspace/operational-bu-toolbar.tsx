@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useOperationalWorkspace } from "@/hooks/use-operational-workspace";
+import { useUnitScope } from "@/hooks/use-unit-scope";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -19,7 +20,10 @@ type Props = {
 
 export function OperationalBuToolbar({ className, selectClassName }: Props) {
   const t = useTranslations("dashboard");
+  const { isUnitScoped } = useUnitScope();
   const { linkedUnits, selectedUnit, setCompany, isReady } = useOperationalWorkspace();
+
+  if (isUnitScoped) return null;
 
   if (!isReady || linkedUnits.length === 0) {
     return null;

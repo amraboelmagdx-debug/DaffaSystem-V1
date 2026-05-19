@@ -1,12 +1,5 @@
-"use client";
+import { LegacyFlatRouteRedirect } from "@/components/operational-workspace/legacy-flat-route-redirect";
 
-import { SalesIncentivesWorkspace } from "@/components/incentives/sales-incentives-workspace";
-import { BuContextGate } from "@/components/operational-workspace/bu-context-gate";
-
-export default function SalesIncentivesPage() {
-  return (
-    <BuContextGate>
-      <SalesIncentivesWorkspace />
-    </BuContextGate>
-  );
+export default function SalesIncentivesLegacyPage() {
+  return <LegacyFlatRouteRedirect unitSlug="/sales-incentives" />;
 }

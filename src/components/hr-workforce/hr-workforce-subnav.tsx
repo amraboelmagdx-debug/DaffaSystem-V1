@@ -3,29 +3,30 @@
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
+import { useUnitRouteContext } from "@/hooks/use-unit-route-context";
 
 const tabs = [
-  { href: "/hr-workforce", key: "tabOverview" as const, match: (p: string) => p === "/hr-workforce" },
-  {
-    href: "/hr-workforce/intelligence",
-    key: "tabIntelligence" as const,
-    match: (p: string) => p.startsWith("/hr-workforce/intelligence"),
-  },
-  { href: "/hr-workforce/roles", key: "tabRoles" as const, match: (p: string) => p.startsWith("/hr-workforce/roles") },
-  { href: "/hr-workforce/settings", key: "tabSettings" as const, match: (p: string) => p.startsWith("/hr-workforce/settings") },
-  { href: "/hr-workforce/import", key: "tabImport" as const, match: (p: string) => p.startsWith("/hr-workforce/import") },
+  { slug: "", key: "tabOverview" as const },
+  { slug: "/intelligence", key: "tabIntelligence" as const },
+  { slug: "/roles", key: "tabRoles" as const },
+  { slug: "/settings", key: "tabSettings" as const },
+  { slug: "/import", key: "tabImport" as const },
 ];
 
 export function HrWorkforceSubnav() {
   const t = useTranslations("hrWorkforce");
   const pathname = usePathname();
+  const { buildHref } = useUnitRouteContext();
 
   return (
     <div className="mb-6 flex flex-wrap gap-2 border-b border-border/60 pb-3">
       {tabs.map((tab) => {
-        const active = tab.match(pathname);
+        const href = buildHref(`/hr-workforce${tab.slug}`);
+        const active = tab.slug === ""
+          ? pathname.endsWith("/hr-workforce")
+          : pathname.includes(`/hr-workforce${tab.slug}`);
         return (
-          <Link key={tab.href} href={tab.href}>
+          <Link key={href} href={href}>
             <span
               className={cn(
                 "inline-flex rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",

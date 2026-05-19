@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useLocale, useTranslations } from "next-intl";
-import { Target, ChevronRight, ChevronLeft, Sparkles } from "lucide-react";
+import { Target, Sparkles } from "lucide-react";
 import { SalesPlanCharts } from "@/components/sales-plan/sales-plan-charts";
 import { AdvancedEnterprisePanel } from "@/components/sales-plan/advanced-enterprise-panel";
 import { InsightBulb } from "@/components/planning/insight-bulb";
@@ -37,8 +37,10 @@ import {
   yearlyBurnFromMonthly,
 } from "@/lib/sales-plan/engine";
 import { cn } from "@/lib/utils";
-import { PlanningSessionHeader } from "@/components/sales-plan/planning-session-header";
-import { ScenarioSummaryList } from "@/components/sales-plan/scenario-summary-list";
+import { SalesPlanCommandBar } from "@/components/sales-plan/sales-plan-command-bar";
+import { SalesPlanScenarioRail } from "@/components/sales-plan/sales-plan-scenario-rail";
+import { SalesPlanWizardNav } from "@/components/sales-plan/sales-plan-wizard-nav";
+import { SalesPlanContextPanel } from "@/components/sales-plan/sales-plan-context-panel";
 import { OperationalWorkspaceGate } from "@/components/operational-workspace/operational-workspace-gate";
 import { useOperationalWorkspace } from "@/hooks/use-operational-workspace";
 import {
@@ -48,39 +50,11 @@ import {
 } from "@/stores/use-workspace-store";
 import { useSalesPlanWizardStore } from "@/stores/use-sales-plan-wizard-store";
 import type { OpportunityTierKey } from "@/types/sales-plan";
-import {
-  SALES_PLAN_CHAPTERS,
-  chapterForStep,
-  firstStepOfChapter,
-} from "@/lib/sales-plan/wizard-chapters";
 import { SampleDataPanel } from "@/components/sample-data/sample-data-panel";
 import { OperatorPageShell } from "@/components/ox/operator-page-shell";
 import { OxSection } from "@/components/ox/ox-section";
 
 const TIER_KEYS: OpportunityTierKey[] = ["tiny", "standard", "big", "mega"];
-
-const WIZARD_STEP_TITLE_KEYS = [
-  "s1",
-  "s2",
-  "s3",
-  "s4",
-  "s5",
-  "s6",
-  "s7",
-  "s8",
-  "s9",
-  "s10",
-  "s11",
-  "s12",
-  "s13",
-  "s14",
-  "s15",
-  "s16",
-  "s17",
-  "s18",
-] as const;
-
-type WizardStepTitleKey = (typeof WIZARD_STEP_TITLE_KEYS)[number];
 
 type InsightTranslationKey = `insights.${PlanningInsightId}`;
 type SegmentRevenueRow = SalesPlanModel["segmentRevenue"][number];
@@ -233,27 +207,23 @@ export function SalesPlanWizard() {
     );
   }
 
-  const activeChapter = chapterForStep(wizard.currentStep);
-
   return (
     <OperatorPageShell
       routeContext="sales-plan"
       title={t("title")}
       purpose={tOx("salesPlan.purpose")}
       mode="author"
-      showWorkflowRail
       headerActions={
         <Badge variant="outline" className="font-normal">
           {t("badge")}
         </Badge>
       }
     >
-    <div className="mx-auto max-w-6xl space-y-6 pb-28">
+    <div className="space-y-6 pb-28">
       <SampleDataPanel moduleId="sales-plan-wizard" />
 
-      <PlanningSessionHeader
+      <SalesPlanCommandBar
         companyId={company.id}
-        companyName={company.name}
         canSave={canSave}
         saveFeedback={saveFeedback}
         onSave={() => {
@@ -275,99 +245,19 @@ export function SalesPlanWizard() {
         onApply={() => wizard.applyPlanToWorkspace()}
       />
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
-        <div className="min-w-0 space-y-6">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-1.5 rounded-md border border-violet-500/20 bg-violet-500/5 px-2 py-1">
-          <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
-            <input
-              type="checkbox"
-              className="h-3.5 w-3.5 rounded border-border accent-primary"
-              checked={wizard.showAdvancedEnterpriseUi ?? false}
-              onChange={(e) => wizard.setShowAdvancedEnterpriseUi(e.target.checked)}
-            />
-            {t("advanced.toggleLabel")}
-          </label>
-          <InsightBulb label={t("advanced.toggleBulbTitle")} description={t("advanced.toggleBulbBody")} />
-        </div>
-        <Button type="button" variant="outline" size="sm" onClick={() => wizard.normalizeMarketSegments()}>
-          {t("normalizeSegments")}
-        </Button>
-        <Button type="button" variant="outline" size="sm" onClick={() => wizard.normalizeAllTierMixes()}>
-          {t("normalizeTierMixAll")}
-        </Button>
-        <Button type="button" variant="outline" size="sm" onClick={() => wizard.resetWizard()}>
-          {t("reset")}
-        </Button>
-      </div>
+      <SalesPlanScenarioRail
+        companyId={company.id}
+        scenarios={scenarios}
+        activeScenarioId={selectedScenarioId}
+        onSelectScenario={setScenario}
+      />
 
-      <div className="flex flex-wrap gap-2">
-        {SALES_PLAN_CHAPTERS.map((ch) => (
-          <button
-            key={ch.id}
-            type="button"
-            onClick={() => wizard.setStep(firstStepOfChapter(ch.id))}
-            className={cn(
-              "rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
-              activeChapter.id === ch.id
-                ? "border-primary bg-primary/10 text-foreground"
-                : "border-border/60 text-muted-foreground hover:bg-muted/50"
-            )}
-          >
-            {tOx(ch.labelKey as never)}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex flex-wrap gap-1.5 border-b border-border/60 pb-3">
-        {WIZARD_STEP_TITLE_KEYS.map((key: WizardStepTitleKey, i: number) => {
-          const n = i + 1;
-          const active = wizard.currentStep === n;
-          return (
-            <button
-              key={key}
-              type="button"
-              onClick={() => wizard.setStep(n)}
-              className={cn(
-                "rounded-full px-3 py-1 text-xs font-medium transition-colors",
-                active
-                  ? "bg-primary text-primary-foreground shadow"
-                  : "bg-muted/60 text-muted-foreground hover:bg-muted"
-              )}
-            >
-              {n}. {t(`stepTitles.${key}`)}
-            </button>
-          );
-        })}
-      </div>
+      <SalesPlanWizardNav onGo={go} />
 
       {wizard.showAdvancedEnterpriseUi ? <AdvancedEnterprisePanel /> : null}
 
-      <div className="flex items-center justify-between gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={wizard.currentStep <= 1}
-          onClick={() => go(-1)}
-        >
-          <ChevronLeft className="me-1 h-4 w-4" />
-          {t("back")}
-        </Button>
-        <span className="text-xs text-muted-foreground">
-          {t("stepOf", { current: wizard.currentStep, total: 18 })}
-        </span>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={wizard.currentStep >= 18}
-          onClick={() => go(1)}
-        >
-          {t("next")}
-          <ChevronRight className="ms-1 h-4 w-4" />
-        </Button>
-      </div>
+      <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
+        <div className="min-w-0 space-y-6">
 
       {wizard.currentStep === 1 && (
         <Card>
@@ -1484,15 +1374,11 @@ export function SalesPlanWizard() {
       )}
 
         </div>
-        <ScenarioSummaryList
-          scenarios={scenarios}
-          activeScenarioId={selectedScenarioId}
-          onSelectScenario={setScenario}
-        />
+        <SalesPlanContextPanel activeScenarioId={selectedScenarioId} />
       </div>
 
       <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 border-t border-border/60 bg-background/90 px-4 py-3 backdrop-blur-md pointer-events-auto">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 text-xs">
+        <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-x-6 gap-y-2 px-4 text-xs md:px-8">
           <span>
             <span className="text-muted-foreground">{t("kpiStrip.revenueTarget")}</span>{" "}
             <strong className="tabular-nums">{fmt(model.targets.salesTarget, wizard.meta.currency)}</strong>

@@ -31,7 +31,11 @@ import { persistNewBusinessUnitAndSync } from "@/lib/hr-workforce/add-business-u
 import { SetActiveBuDialog } from "@/components/hr-workforce/set-active-bu-dialog";
 import { useHrWorkforceStore } from "@/stores/use-hr-workforce-store";
 import { useWorkspaceStore } from "@/stores/use-workspace-store";
-
+import { useUnitScope } from "@/hooks/use-unit-scope";
+import {
+  filterBusinessUnitsForBu,
+  filterDepartmentsForBu,
+} from "@/lib/hr-workforce/scope-by-business-unit";
 const OH_COMPONENT_CATEGORIES = ["General", "Facilities", "IT", "Professional", "G&A", "Other"] as const;
 
 export function HrWorkforceOrganizationView() {
@@ -68,6 +72,11 @@ export function HrWorkforceOrganizationView() {
   const clearAllImportLogs = useHrWorkforceStore((s) => s.clearAllImportLogs);
 
   const setCompany = useWorkspaceStore((s) => s.setCompany);
+  const { isUnitScoped, hrBusinessUnitId } = useUnitScope();
+  const visibleBusinessUnits = useMemo(
+    () => filterBusinessUnitsForBu(businessUnits, isUnitScoped ? hrBusinessUnitId : null),
+    [businessUnits, isUnitScoped, hrBusinessUnitId]
+  );
   const [buName, setBuName] = useState("");
   const [addingBu, setAddingBu] = useState(false);
   const [addBuError, setAddBuError] = useState<string | null>(null);
@@ -77,10 +86,20 @@ export function HrWorkforceOrganizationView() {
     companyId?: string;
   } | null>(null);
   const [deptName, setDeptName] = useState("");
-  const [deptBuId, setDeptBuId] = useState(() => businessUnits[0]?.id ?? "");
+  const [deptBuId, setDeptBuId] = useState(
+    () => hrBusinessUnitId ?? businessUnits[0]?.id ?? ""
+  );
   const [teamName, setTeamName] = useState("");
   const [teamDeptId, setTeamDeptId] = useState(() => departments[0]?.id ?? "");
-  const [selectedOhBuId, setSelectedOhBuId] = useState(() => businessUnits[0]?.id ?? "");
+  const [selectedOhBuId, setSelectedOhBuId] = useState(
+    () => hrBusinessUnitId ?? businessUnits[0]?.id ?? ""
+  );
+
+  useEffect(() => {
+    if (!isUnitScoped || !hrBusinessUnitId) return;
+    setDeptBuId(hrBusinessUnitId);
+    setSelectedOhBuId(hrBusinessUnitId);
+  }, [isUnitScoped, hrBusinessUnitId]);
   const [snapLabel, setSnapLabel] = useState("Snapshot");
   const [cmpA, setCmpA] = useState("");
   const [cmpB, setCmpB] = useState("");
@@ -124,8 +143,12 @@ export function HrWorkforceOrganizationView() {
   );
 
   const departmentsInSelectedBu = useMemo(
-    () => departments.filter((d) => d.businessUnitId === deptBuId),
-    [departments, deptBuId]
+    () =>
+      filterDepartmentsForBu(
+        departments.filter((d) => d.businessUnitId === deptBuId),
+        isUnitScoped ? hrBusinessUnitId : null
+      ),
+    [departments, deptBuId, isUnitScoped, hrBusinessUnitId]
   );
 
   const mh = useMemo(() => monthlyWorkingHoursPerEmployee(hrGlobalSettings), [hrGlobalSettings]);
@@ -217,6 +240,7 @@ export function HrWorkforceOrganizationView() {
               </Button>
             </CardHeader>
             <CardContent className="space-y-3">
+              {!isUnitScoped ? (
               <div className="flex flex-wrap items-end gap-2 rounded-md border border-dashed border-border/60 bg-muted/10 p-3">
                 <div className="space-y-1">
                   <Label className="text-xs">{t("addBuFieldLabel")}</Label>
@@ -257,6 +281,9 @@ export function HrWorkforceOrganizationView() {
                   {addingBu ? t("addingBu") : t("addBU")}
                 </Button>
               </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">{t("addBuOnHoldingHint")}</p>
+              )}
               {addBuError ? (
                 <p className="text-xs text-destructive">{addBuError}</p>
               ) : null}
@@ -270,7 +297,7 @@ export function HrWorkforceOrganizationView() {
                   </tr>
                 </thead>
                 <tbody>
-                  {businessUnits.map((u) => (
+                  {visibleBusinessUnits.map((u) => (
                     <tr key={u.id}>
                       <td>
                         <Input
@@ -335,18 +362,20 @@ export function HrWorkforceOrganizationView() {
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex flex-wrap gap-2">
-                <Select value={deptBuId} onValueChange={setDeptBuId}>
-                  <SelectTrigger className="w-[200px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {businessUnits.map((b) => (
-                      <SelectItem key={b.id} value={b.id}>
-                        {b.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {!isUnitScoped ? (
+                  <Select value={deptBuId} onValueChange={setDeptBuId}>
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {visibleBusinessUnits.map((b) => (
+                        <SelectItem key={b.id} value={b.id}>
+                          {b.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : null}
                 <Input value={deptName} dir="auto" onChange={(e) => setDeptName(e.target.value)} placeholder={t("deptNamePh")} />
                 <Button
                   type="button"
@@ -571,18 +600,24 @@ export function HrWorkforceOrganizationView() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label>{t("ohSettingsBusinessUnit")}</Label>
-                  <Select value={selectedOhBuId} onValueChange={setSelectedOhBuId}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {businessUnits.map((u) => (
-                        <SelectItem key={u.id} value={u.id}>
-                          {u.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {!isUnitScoped ? (
+                    <Select value={selectedOhBuId} onValueChange={setSelectedOhBuId}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {visibleBusinessUnits.map((u) => (
+                          <SelectItem key={u.id} value={u.id}>
+                            {u.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-sm font-medium">
+                      {visibleBusinessUnits[0]?.name ?? "—"}
+                    </p>
+                  )}
                   <p className="text-xs text-muted-foreground">{t("ohSettingsBusinessUnitHint")}</p>
                 </div>
                 <div className="space-y-2">

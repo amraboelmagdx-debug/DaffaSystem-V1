@@ -30,6 +30,8 @@ import { monthlyWorkingHoursPerEmployee } from "@/lib/hr-workforce/monthly-hours
 import { effectiveOhBillableHeadcount } from "@/lib/hr-workforce/structure-utils";
 import { effectiveOperationalRoleType } from "@/lib/hr-workforce/role-operational-type";
 import { aggregateByDepartment, buildWorkforceDashboardAggregates } from "@/lib/hr-workforce/aggregates";
+import { filterBusinessUnitsForBu } from "@/lib/hr-workforce/scope-by-business-unit";
+import { useUnitScope } from "@/hooks/use-unit-scope";
 import { cn } from "@/lib/utils";
 import type { HrDashChartLabels } from "./hr-workforce-dashboard-charts";
 import type { RoleCostBreakdown } from "@/types/hr-workforce";
@@ -77,14 +79,25 @@ export function HrWorkforceDashboardView() {
   const currency = hrGlobalSettings.defaultCurrency;
   const isRtl = locale.startsWith("ar");
   const chartTheme = resolvedTheme === "dark" ? "dark" : "light";
+  const { isUnitScoped, hrBusinessUnitId } = useUnitScope();
+  const visibleBusinessUnits = useMemo(
+    () => filterBusinessUnitsForBu(businessUnits, isUnitScoped ? hrBusinessUnitId : null),
+    [businessUnits, isUnitScoped, hrBusinessUnitId]
+  );
 
-  const [selectedOhBuId, setSelectedOhBuId] = useState(() => businessUnits[0]?.id ?? "");
+  const [selectedOhBuId, setSelectedOhBuId] = useState(
+    () => hrBusinessUnitId ?? businessUnits[0]?.id ?? ""
+  );
 
   useEffect(() => {
+    if (isUnitScoped && hrBusinessUnitId) {
+      setSelectedOhBuId(hrBusinessUnitId);
+      return;
+    }
     if (businessUnits.length && !businessUnits.some((b) => b.id === selectedOhBuId)) {
       setSelectedOhBuId(businessUnits[0].id);
     }
-  }, [businessUnits, selectedOhBuId]);
+  }, [businessUnits, selectedOhBuId, isUnitScoped, hrBusinessUnitId]);
 
   const model = useMemo(
     () =>
@@ -353,6 +366,7 @@ export function HrWorkforceDashboardView() {
         <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">{t("dashContextNote")}</p>
       </div>
 
+      {!isUnitScoped ? (
       <Card className="border-primary/20 bg-gradient-to-r from-primary/[0.06] via-card to-card">
         <CardContent className="flex flex-col gap-3 pt-6 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-2">
@@ -364,7 +378,7 @@ export function HrWorkforceDashboardView() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {businessUnits.map((u) => (
+                {visibleBusinessUnits.map((u) => (
                   <SelectItem key={u.id} value={u.id}>
                     {u.name}
                   </SelectItem>
@@ -375,6 +389,7 @@ export function HrWorkforceDashboardView() {
           <div className="text-xs text-muted-foreground sm:max-w-md sm:text-end">{t("dashBuSelectorHint")}</div>
         </CardContent>
       </Card>
+      ) : null}
 
       <div className="space-y-6">
         <div className="space-y-1">
@@ -510,6 +525,7 @@ export function HrWorkforceDashboardView() {
         </div>
       </div>
 
+      {!isUnitScoped ? (
       <div className="space-y-6 border-t border-border/50 pt-8">
         <div className="space-y-1">
           <h2 className="text-lg font-semibold tracking-tight">{t("dashPortfolioSectionTitle")}</h2>
@@ -551,7 +567,7 @@ export function HrWorkforceDashboardView() {
           </CardContent>
         </Card>
 
-        {buRateData.length > 1 ? (
+        {!isUnitScoped && buRateData.length > 1 ? (
           <Card className="border-border/60 bg-card/50">
             <CardHeader>
               <CardTitle className="text-base">{t("chartBuOhCompareTitle")}</CardTitle>
@@ -568,6 +584,7 @@ export function HrWorkforceDashboardView() {
           </Card>
         ) : null}
       </div>
+      ) : null}
     </div>
   );
 }

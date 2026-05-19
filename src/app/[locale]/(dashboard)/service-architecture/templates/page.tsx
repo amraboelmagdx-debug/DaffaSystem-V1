@@ -1,6 +1,5 @@
-import { ServiceTemplatesView } from "@/components/service-architecture/service-templates-view";
+import { LegacyFlatRouteRedirect } from "@/components/operational-workspace/legacy-flat-route-redirect";
 
-export default function ServiceArchitectureTemplatesPage() {
-  return <ServiceTemplatesView />;
+export default function ServiceArchitectureTemplatesLegacyPage() {
+  return <LegacyFlatRouteRedirect unitSlug="/service-architecture/templates" />;
 }
-
