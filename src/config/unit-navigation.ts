@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   Target,
   Trophy,
+  Upload,
   Users2,
 } from "lucide-react";
 import type { NavTranslationKey } from "./canonical-navigation";
@@ -14,6 +15,11 @@ export type UnitNavItem = {
   slug: string;
   key: NavTranslationKey;
   icon: LucideIcon;
+  /**
+   * Tenant-level href (not prefixed with /unit/[companyId]).
+   * Use for platform-wide tools like Import / Export.
+   */
+  tenantHref?: string;
 };
 
 /** Nav shown when on /unit/[companyId]/*. */
@@ -28,6 +34,12 @@ export const unitNav: UnitNavItem[] = [
   },
   { slug: "/sales-plan", key: "salesPlan", icon: Target },
   { slug: "/sales-incentives", key: "salesIncentives", icon: Trophy },
+  {
+    slug: "/import-export",
+    key: "importExport",
+    icon: Upload,
+    tenantHref: "/import-export",
+  },
 ];
 
 export function unitHref(companyId: string, slug: string): string {
@@ -51,6 +63,9 @@ export function isUnitNavItemActive(
     return pathname.startsWith(
       `${base}/service-architecture/commercial-pricing`
     );
+  }
+  if (slug === "/import-export") {
+    return pathname.startsWith("/import-export");
   }
   return pathname.startsWith(`${base}${slug}`);
 }

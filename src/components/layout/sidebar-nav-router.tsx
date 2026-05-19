@@ -94,7 +94,7 @@ function UnitSidebar({ collapsed }: Props) {
       ) : null}
       {unitNav.map((item) => {
         const Icon = item.icon;
-        const href = unitHref(companyId, item.slug);
+        const href = item.tenantHref ?? unitHref(companyId, item.slug);
         const active = isUnitNavItemActive(pathname, companyId, item.slug);
         return (
           <Link key={item.slug || "__root"} href={href}>

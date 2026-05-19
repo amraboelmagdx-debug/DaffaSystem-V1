@@ -449,6 +449,61 @@ export const useHrWorkforceStore = create<HrWorkforceState>()(
           };
         }),
 
+      applyEngineImportDeltas: (deltas, options) =>
+        set((s) => {
+          const replace = options?.replace === true;
+          const upsertById = <T extends { id: string }>(
+            existing: T[],
+            incoming: T[]
+          ): T[] => {
+            if (replace) return incoming;
+            const byId = new Map(existing.map((it) => [it.id, it]));
+            for (const item of incoming) {
+              const prev = byId.get(item.id);
+              byId.set(item.id, prev ? { ...prev, ...item } : item);
+            }
+            return Array.from(byId.values());
+          };
+
+          const businessUnits = upsertById(s.businessUnits, deltas.businessUnits);
+          const departments = upsertById(s.departments, deltas.departments);
+          const teams = upsertById(s.teams, deltas.teams);
+          const roles = upsertById(s.roles, deltas.roles);
+
+          const nextOh: typeof s.ohManualByBusinessUnitId = replace
+            ? {}
+            : { ...s.ohManualByBusinessUnitId };
+          for (const u of businessUnits) {
+            if (!nextOh[u.id]) nextOh[u.id] = { ...DEFAULT_OH };
+          }
+          if (deltas.ohManualByBusinessUnitId) {
+            for (const [buId, patch] of Object.entries(
+              deltas.ohManualByBusinessUnitId
+            )) {
+              const prev = nextOh[buId] ?? { ...DEFAULT_OH };
+              nextOh[buId] = migrateOhManualFromPersist(
+                { ...prev, ...patch },
+                (deltas.globalSettings
+                  ? { ...s.hrGlobalSettings, ...deltas.globalSettings }
+                  : s.hrGlobalSettings) as LegacyHrGlobal
+              );
+            }
+          }
+
+          const nextGlobal = deltas.globalSettings
+            ? { ...s.hrGlobalSettings, ...deltas.globalSettings }
+            : s.hrGlobalSettings;
+
+          return {
+            businessUnits,
+            departments,
+            teams,
+            roles,
+            ohManualByBusinessUnitId: nextOh,
+            hrGlobalSettings: nextGlobal,
+          };
+        }),
+
       resetModule: () => {
         const org = seedOrg();
         set({

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Cairo, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
+import { themeInitScript } from "@/lib/theme/theme-script";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,7 +31,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className="dark">
+      <head>
+        <script
+          dangerouslySetInnerHTML={{ __html: themeInitScript() }}
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${cairo.variable} min-h-screen antialiased`}
       >

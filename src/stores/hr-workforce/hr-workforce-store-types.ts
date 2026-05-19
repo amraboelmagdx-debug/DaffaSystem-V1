@@ -12,6 +12,28 @@ import type {
   OhManualSettings,
 } from "@/types/hr-workforce";
 
+/**
+ * Engine-style import payload (canonical Excel pipeline).
+ *
+ * Each entity collection contains a mix of new and existing rows; the store
+ * picks update vs insert by `id` membership. `globalSettings` and `ohManual`
+ * (per business unit) are applied with `Object.assign`-style merging so partial
+ * patches are safe.
+ */
+export interface HrEngineImportDeltas {
+  businessUnits: HrBusinessUnit[];
+  departments: HrDepartment[];
+  teams: HrTeam[];
+  roles: JobRole[];
+  globalSettings?: Partial<HrGlobalSettings>;
+  ohManualByBusinessUnitId?: Record<string, Partial<OhManualSettings>>;
+}
+
+export interface HrEngineImportOptions {
+  /** When true, replace lists entirely; otherwise upsert by id. */
+  replace?: boolean;
+}
+
 export interface HrSnapshotRecord {
   meta: HrSnapshotMeta;
   payloadJson: string;
@@ -83,6 +105,11 @@ export interface HrWorkforceState {
   bulkDeleteRoles: (ids: string[]) => void;
 
   applyImportDeltas: (deltas: ImportApplyDeltas, options?: { replace?: boolean }) => void;
+  /**
+   * Engine-style upsert: matches existing entities by id, merges patches, inserts new ones.
+   * Also accepts optional `globalSettings` and `ohManualByBusinessUnitId` patches.
+   */
+  applyEngineImportDeltas: (deltas: HrEngineImportDeltas, options?: HrEngineImportOptions) => void;
   pushImportLog: (entry: Omit<HrImportLogEntry, "id" | "createdAt"> & Partial<Pick<HrImportLogEntry, "id" | "createdAt">>) => void;
   deleteImportLog: (logId: string) => void;
   clearAllImportLogs: () => void;

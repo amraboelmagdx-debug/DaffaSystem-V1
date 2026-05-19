@@ -25,6 +25,8 @@ import {
 
   Trophy,
 
+  Upload,
+
   Users2,
 
   Workflow,
@@ -61,7 +63,9 @@ export type NavTranslationKey =
 
   | "testLab"
 
-  | "holding";
+  | "holding"
+
+  | "importExport";
 
 
 
@@ -138,6 +142,8 @@ export const foundationNav: CanonicalNavItem[] = [
 export const systemNav: CanonicalNavItem[] = [
 
   { href: "/get-started", key: "getStarted", icon: Rocket },
+
+  { href: "/import-export", key: "importExport", icon: Upload },
 
   { href: "/test-lab", key: "testLab", icon: FlaskConical },
 
@@ -240,6 +246,8 @@ export function isNavItemActive(pathname: string, href: string): boolean {
   if (href === "/hr-workforce") return pathname.startsWith("/hr-workforce");
 
   if (href === "/get-started") return pathname.startsWith("/get-started");
+
+  if (href === "/import-export") return pathname.startsWith("/import-export");
 
   if (href === "/test-lab") return pathname.startsWith("/test-lab");
 

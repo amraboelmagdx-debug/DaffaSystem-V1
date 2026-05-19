@@ -5,7 +5,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { Moon, PanelLeftClose, PanelLeftOpen, Search, Sun } from "lucide-react";
 import { SidebarNavRouter } from "@/components/layout/sidebar-nav-router";
-import { useTheme } from "next-themes";
+import { useTheme } from "@/lib/theme/theme-provider";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";

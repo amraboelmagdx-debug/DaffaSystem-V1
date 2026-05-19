@@ -3,6 +3,72 @@
     "title": "Nexus Plan — Enterprise forecasting",
     "description": "Sales forecasting, revenue planning, scenario modeling, and executive analytics."
   },
+  "importEngine": {
+    "loading": "Loading…",
+    "subtitle": "Download a template, fill it offline, then upload to apply changes safely.",
+    "steps": {
+      "download": "Download",
+      "upload": "Upload",
+      "validate": "Validate",
+      "preview": "Preview",
+      "result": "Result"
+    },
+    "download": {
+      "title": "1. Download the template",
+      "description": "Blank template includes reference sheets with your existing data. Choose 'Include current data' to export a full workbook for editing.",
+      "blank": "Blank template",
+      "withCurrent": "Include current data",
+      "next": "I have a file → continue",
+      "blocked": "This module depends on data that hasn't been set up yet. Complete the upstream modules before importing here."
+    },
+    "upload": {
+      "title": "2. Upload your filled file",
+      "description": "We will parse the workbook and run validation against your current data.",
+      "selected": "Selected: {name}"
+    },
+    "validate": {
+      "title": "3. Validation results",
+      "descriptionFile": "From {name}",
+      "next": "Continue to preview"
+    },
+    "preview": {
+      "title": "4. Preview changes",
+      "description": "Final review before any data is written.",
+      "commit": "Apply import"
+    },
+    "result": {
+      "success": "Import applied successfully",
+      "failure": "Import did not complete",
+      "summary": "Your workspace has been updated.",
+      "again": "Run another import"
+    },
+    "commitDialog": {
+      "title": "Apply import?",
+      "description": "This will update your live workspace data. You can roll back via the audit log if something looks wrong.",
+      "confirm": "Apply changes"
+    },
+    "common": {
+      "back": "Back",
+      "cancel": "Cancel",
+      "restart": "Start over"
+    },
+    "hub": {
+      "title": "Import / Export",
+      "subtitle": "Canonical Excel templates for every module — relationships, dependencies, and validation handled for you.",
+      "openWizard": "Open wizard",
+      "comingSoon": "Coming soon",
+      "ready": "Ready",
+      "dependencyMissing": "Needs setup",
+      "notYetAvailable": "Not yet available — Phase 2+ rollout.",
+      "backToHub": "Back to Import / Export"
+    },
+    "modules": {
+      "hr-workforce": { "label": "HR Workforce" },
+      "service-architecture": { "label": "Service Architecture" },
+      "sales-plan": { "label": "Sales Plan" },
+      "incentives": { "label": "Incentives" }
+    }
+  },
   "shell": {
     "brand": "Nexus Plan",
     "tagline": "Revenue intelligence",
@@ -33,7 +99,8 @@
     "systemGroup": "System",
     "getStarted": "Get started",
     "testLab": "Test lab",
-    "holding": "Holding"
+    "holding": "Holding",
+    "importExport": "Import / Export"
   },
   "ox": {
     "modes": {

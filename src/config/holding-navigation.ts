@@ -5,6 +5,7 @@ import {
   MessageSquare,
   Rocket,
   Settings2,
+  Upload,
 } from "lucide-react";
 import type { NavTranslationKey } from "./canonical-navigation";
 
@@ -18,6 +19,7 @@ export type HoldingNavItem = {
 export const holdingNav: HoldingNavItem[] = [
   { href: "/holding", key: "holding", icon: Building2 },
   { href: "/get-started", key: "getStarted", icon: Rocket },
+  { href: "/import-export", key: "importExport", icon: Upload },
   { href: "/test-lab", key: "testLab", icon: FlaskConical },
   { href: "/settings", key: "settings", icon: Settings2 },
   { href: "/assistant", key: "assistant", icon: MessageSquare },

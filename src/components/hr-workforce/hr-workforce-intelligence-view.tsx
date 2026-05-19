@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronUp, Minus } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useTheme } from "next-themes";
+import { useTheme } from "@/lib/theme/theme-provider";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { InsightBulb } from "@/components/planning/insight-bulb";
 import { Label } from "@/components/ui/label";

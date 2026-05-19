@@ -1,0 +1,1 @@
+export { salesPlanImportAdapter } from "./adapter";

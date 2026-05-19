@@ -1,0 +1,1 @@
+export { incentivesImportAdapter } from "./adapter";
